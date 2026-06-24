@@ -243,16 +243,19 @@ class BbrushZBrushPopup(bpy.types.Operator):
         return _active_mesh_object(context) is not None
 
     def invoke(self, context, event):
-        bpy.ops.wm.call_menu(name=BbrushZBrushPopupMenu.bl_idname)
+        bpy.ops.wm.call_panel(name=BbrushZBrushPopupPanel.bl_idname, keep_open=True)
         return {"FINISHED"}
 
     def draw(self, context):
         draw_zbrush_popup(self.layout, context)
 
 
-class BbrushZBrushPopupMenu(bpy.types.Menu):
-    bl_idname = "SCULPT_MT_bbrush_zbrush_popup"
+class BbrushZBrushPopupPanel(bpy.types.Panel):
+    bl_idname = "VIEW3D_PT_bbrush_zbrush_popup"
     bl_label = "BBrush ZBrush Tools"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "WINDOW"
+    bl_ui_units_x = 16
 
     def draw(self, context):
         draw_zbrush_popup(self.layout, context)
@@ -263,16 +266,14 @@ def draw_zbrush_popup(layout, context):
 
         box = layout.box()
         box.label(text="Deform")
-        row = box.row(align=True)
-        row.operator("sculpt.bbrush_zb_mirror", text="Mirror")
-        row.operator("sculpt.bbrush_zb_smart_resym", text="Smart ReSym")
+        box.operator("sculpt.bbrush_zb_mirror", text="Mirror")
+        box.operator("sculpt.bbrush_zb_smart_resym", text="Smart ReSym")
         box.operator("sculpt.bbrush_zb_mesh_filter", text="Polish By Features").filter_type = "SHARPEN"
         box.operator("sculpt.bbrush_zb_mesh_filter", text="Polish By Groups").filter_type = "RELAX_FACE_SETS"
-        row = box.row(align=True)
-        op = row.operator("sculpt.bbrush_zb_mesh_filter", text="Relax")
+        op = box.operator("sculpt.bbrush_zb_mesh_filter", text="Relax")
         op.filter_type = "RELAX"
         op.strength_property = "relax_strength"
-        op = row.operator("sculpt.bbrush_zb_mesh_filter", text="Inflate")
+        op = box.operator("sculpt.bbrush_zb_mesh_filter", text="Inflate")
         op.filter_type = "INFLATE"
         op.strength_property = "inflate_strength"
         box.prop(props, "polish_strength", slider=True)
@@ -281,24 +282,20 @@ def draw_zbrush_popup(layout, context):
 
         box = layout.box()
         box.label(text="PolyGroup")
-        row = box.row(align=True)
-        row.operator("sculpt.bbrush_zb_face_sets_auto", text="Auto Groups").mode = "CONNECTED"
-        row.operator("sculpt.bbrush_zb_face_sets_auto", text="UV Groups").mode = "UV"
+        box.operator("sculpt.bbrush_zb_face_sets_auto", text="Auto Groups").mode = "CONNECTED"
+        box.operator("sculpt.bbrush_zb_face_sets_auto", text="UV Groups").mode = "UV"
         box.operator("sculpt.bbrush_zb_face_sets_auto", text="Auto Groups With UV").mode = "UV"
         box.operator("sculpt.bbrush_zb_merge_stray_groups", text="Merge Stray Groups")
-        row = box.row(align=True)
-        row.operator("sculpt.bbrush_zb_face_sets_auto", text="Groups By Normals").mode = "NORMALS"
-        row.prop(props, "max_angle", text="")
-        row = box.row(align=True)
-        row.operator("sculpt.bbrush_face_sets_create_zbrush", text="Group Masked")
-        row.operator("sculpt.bbrush_face_sets_create_zbrush", text="Group Masked Clear Mask")
+        box.operator("sculpt.bbrush_zb_face_sets_auto", text="Groups By Normals").mode = "NORMALS"
+        box.prop(props, "max_angle", text="MaxAngle")
+        box.operator("sculpt.bbrush_face_sets_create_zbrush", text="Group Masked")
+        box.operator("sculpt.bbrush_face_sets_create_zbrush", text="Group Masked Clear Mask")
 
         box = layout.box()
         box.label(text="MaskByFeature")
-        row = box.row(align=True)
-        row.operator("sculpt.bbrush_zb_mask_by_feature", text="Border").feature = "BORDER"
-        row.operator("sculpt.bbrush_zb_mask_by_feature", text="Groups").feature = "GROUPS"
-        row.operator("sculpt.bbrush_zb_mask_by_feature", text="Crease").feature = "CREASE"
+        box.operator("sculpt.bbrush_zb_mask_by_feature", text="Border").feature = "BORDER"
+        box.operator("sculpt.bbrush_zb_mask_by_feature", text="Groups").feature = "GROUPS"
+        box.operator("sculpt.bbrush_zb_mask_by_feature", text="Crease").feature = "CREASE"
 
 
 class BbrushZbMeshFilter(bpy.types.Operator):
@@ -493,7 +490,7 @@ class BbrushZbMaskByFeature(bpy.types.Operator):
 classes = (
     BbrushZBrushPopupProperties,
     BbrushZBrushPopup,
-    BbrushZBrushPopupMenu,
+    BbrushZBrushPopupPanel,
     BbrushZbMeshFilter,
     BbrushZbMirror,
     BbrushZbSmartResym,
