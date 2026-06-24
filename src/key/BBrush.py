@@ -18,6 +18,25 @@ params = blender_default.Params()
 sculpt_keymap = blender_default.km_sculpt(params)
 
 mask_keys = [
+    ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
+    ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
+    ("wm.radial_control",
+     {"type": "S", "value": "PRESS"},
+     {"properties":
+      [("data_path_primary", 'tool_settings.sculpt.brush.strength'),
+       ("data_path_secondary", 'tool_settings.sculpt.unified_paint_settings.strength'),
+       ("use_secondary", 'tool_settings.sculpt.unified_paint_settings.use_unified_strength'),
+       ("rotation_path", 'tool_settings.sculpt.brush.texture_slot.angle'),
+       ("color_path", 'tool_settings.sculpt.brush.cursor_color_add'),
+       ("fill_color_path", ''),
+       ("fill_color_override_path", ''),
+       ("fill_color_override_test_path", ''),
+       ("zoom_path", ''),
+       ("image_id", 'tool_settings.sculpt.brush'),
+       ("secondary_tex", False),
+       ],
+      },
+     ),
     ("sculpt.mask_filter", {"type": "NUMPAD_PLUS", "value": "PRESS", "ctrl": True, "repeat": True},
      {"properties": [("filter_type", "GROW"), ("auto_iteration_count", True)]}),
     ("sculpt.mask_filter", {"type": "NUMPAD_MINUS", "value": "PRESS", "ctrl": True, "repeat": True},
@@ -43,9 +62,38 @@ update_brush_shelf_keys = [
 ]
 
 bbrush_event = (
+    ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
+    ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
+    ("wm.radial_control",
+     {"type": "S", "value": "PRESS"},
+     {"properties":
+      [("data_path_primary", 'tool_settings.sculpt.brush.strength'),
+       ("data_path_secondary", 'tool_settings.sculpt.unified_paint_settings.strength'),
+       ("use_secondary", 'tool_settings.sculpt.unified_paint_settings.use_unified_strength'),
+       ("rotation_path", 'tool_settings.sculpt.brush.texture_slot.angle'),
+       ("color_path", 'tool_settings.sculpt.brush.cursor_color_add'),
+       ("fill_color_path", ''),
+       ("fill_color_override_path", ''),
+       ("fill_color_override_test_path", ''),
+       ("zoom_path", ''),
+       ("image_id", 'tool_settings.sculpt.brush'),
+       ("secondary_tex", False),
+       ],
+      },
+     ),
     ("sculpt.bbrush_left_mouse", {"type": "LEFTMOUSE", "value": "PRESS", "any": True}, None),
     # ("sculpt.bbrush_left_mouse", {"type": "LEFTMOUSE", "value": "ANY", "any": True}, None), # 会出现bug在线段形状
 )
+
+
+def keep_default_sculpt_item(item):
+    idname, event, _props = item
+    if idname in ("sculpt.brush_stroke", "paint.mask_lasso_gesture"):
+        return False
+    if idname == "wm.radial_control" and event.get("type") == "F" and event.get("shift"):
+        return False
+    return True
+
 
 keyconfig_version = (4, 4, 32)
 keyconfig_data = [
@@ -65,8 +113,7 @@ keyconfig_data = [
             # ("view3d.move", {"type": "MIDDLEMOUSE", "value": "ANY", "alt": True}, None),
             # ("view3d.zoom", {"type": "MIDDLEMOUSE", "value": "ANY", "ctrl": True}, None),
 
-            *(item for item in sculpt_keymap[2]["items"] if
-              item[0] not in ("sculpt.brush_stroke", "paint.mask_lasso_gesture"))
+            *(item for item in sculpt_keymap[2]["items"] if keep_default_sculpt_item(item))
         ]
     }
      ),

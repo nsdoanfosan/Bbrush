@@ -14,6 +14,45 @@ active_brush_toolbar = {  # 记录活动笔刷的名称
 }
 brush_shelf = {}
 
+
+def _view3d_override(context, event=None):
+    screen = getattr(context, "screen", None)
+    if screen is None:
+        return None
+
+    areas = []
+    area = getattr(context, "area", None)
+    if area and area.type == "VIEW_3D":
+        areas.append(area)
+
+    if event is not None:
+        mouse_x = getattr(event, "mouse_x", None)
+        mouse_y = getattr(event, "mouse_y", None)
+        if mouse_x is not None and mouse_y is not None:
+            for area in screen.areas:
+                if area.type != "VIEW_3D" or area in areas:
+                    continue
+                if area.x < mouse_x < area.x + area.width and area.y < mouse_y < area.y + area.height:
+                    areas.append(area)
+                    break
+
+    areas.extend(area for area in screen.areas if area.type == "VIEW_3D" and area not in areas)
+
+    for area in areas:
+        region = next((region for region in area.regions if region.type == "WINDOW"), None)
+        space = next((space for space in area.spaces if space.type == "VIEW_3D"), None)
+        if region and space:
+            override = {
+                "area": area,
+                "region": region,
+                "space_data": space,
+            }
+            if getattr(context, "window", None):
+                override["window"] = context.window
+            override["screen"] = screen
+            return override
+    return None
+
 mask_brush = (
     "builtin_brush.Mask",  # 旧版本名称
     "builtin_brush.mask",
@@ -126,6 +165,15 @@ class UpdateBrushShelf(bpy.types.Operator):
 
     @classmethod
     def update_brush_shelf(cls, context, event):
+        override = _view3d_override(context, event)
+        if override is None:
+            return False
+
+        with context.temp_override(**override):
+            return cls._update_brush_shelf_in_view3d(context, event)
+
+    @classmethod
+    def _update_brush_shelf_in_view3d(cls, context, event):
         """更新笔刷资产架"""
         if context.space_data is None:
             # 可能在切换窗口
@@ -135,13 +183,16 @@ class UpdateBrushShelf(bpy.types.Operator):
         key = (event.ctrl, event.alt, event.shift)
         mode = BRUSH_SHELF_MODE[key]  # 使用组合键来确认是否需要更新笔刷工具架
 
+        if mode not in brush_shelf:
+            cls.start_brush_shelf(context)
+
         if DEBUG_UPDATE_BRUSH_SHELF:
             print(cls.bl_idname, "\t", mode, "\t", event.type, event.value)
 
         (active_tool, work_space_tool, index) = get_active_tool(context)
 
         if mode != cls.brush_shelf_mode:
-            if active_tool:
+            if active_tool and cls.brush_shelf_mode in active_brush_toolbar:
                 active_brush_toolbar[cls.brush_shelf_mode] = active_tool.idname
             set_brush_shelf(mode)
             cls.brush_shelf_mode = mode
@@ -158,7 +209,11 @@ class UpdateBrushShelf(bpy.types.Operator):
                 #     bpy.ops.wm.tool_set_by_id(name=tool)
 
         from . import brush_runtime
-        brush_runtime.brush_mode = mode
+        if brush_runtime is not None:
+            brush_runtime.brush_mode = mode
+            from .shift_secondary_brush import sync_shift_secondary_brush
+            sync_shift_secondary_brush(context, event)
+        return True
 
     @staticmethod
     def restore_brush_shelf():

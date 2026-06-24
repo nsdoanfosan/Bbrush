@@ -39,6 +39,10 @@ class LeftMouse(bpy.types.Operator, ManuallyManageEvents):
             return {"FINISHED"}
 
         elif active_tool and active_tool.idname == "builtin_brush.draw_face_sets":
+            if event.ctrl and event.shift and not event.alt:
+                self.start_manually_manage_events(event)
+                context.window_manager.modal_handler_add(self)
+                return {"RUNNING_MODAL"}
             return self.brush_stroke(context, event)
         elif active_tool and "face_set" in active_tool.idname:
             """
@@ -95,6 +99,16 @@ class LeftMouse(bpy.types.Operator, ManuallyManageEvents):
         if is_release:  # 单击
             if DEBUG_LEFT_MOUSE:
                 print("is_release", is_in_modal)
+            if (
+                    event.ctrl
+                    and event.shift
+                    and not event.alt
+                    and is_in_modal
+                    and not self.check_is_moving(event)
+            ):
+                from .polygroup_display import sculpt_face_set_ctrl_shift_click_invoke
+                sculpt_face_set_ctrl_shift_click_invoke(context)
+                return {"FINISHED"}
             if is_in_modal:  # 点在了其它模型上and not is_in_active_modal
                 try:
                     res = bpy.ops.object.transfer_mode("INVOKE_DEFAULT")  # object.transfer_mode 使用的c端gpu buffer检测
@@ -175,12 +189,16 @@ def execute_brush_stroke(event):
     在5.1中笔触操作被修改了"""
     args = {}
     if bpy.app.version >= (5, 1, 0):
-        if event.alt:
+        if event.ctrl and not event.shift:
+            args["mode"] = "INVERT" if event.alt else "NORMAL"
+            args["brush_toggle"] = "MASK"
+        elif event.alt:
             args["mode"] = "INVERT"
             args["brush_toggle"] = "None"
         elif event.shift:
             args["mode"] = "NORMAL"
-            args["brush_toggle"] = "SMOOTH"
+            from . import brush_runtime
+            args["brush_toggle"] = "None" if brush_runtime.shift_secondary_active else "SMOOTH"
         else:
             args["mode"] = "NORMAL"
             args["brush_toggle"] = "None"

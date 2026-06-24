@@ -4,6 +4,7 @@ from mathutils import Vector
 from . import brush
 from .keymap import BrushKeymap
 from .left_mouse import LeftMouse
+from .polygroup_display import MaskToFaceSetZBrush, TogglePolygroupDisplay
 from .right_mouse import RightMouse
 from .shortcut_key import ShortcutKey
 from .update_brush_shelf import UpdateBrushShelf
@@ -52,6 +53,11 @@ class BrushRuntime:
 
     # SCULPT,SMOOTH,HIDE,MASK,ORIGINAL
     brush_mode = "NONE"
+
+    # Shift-only temporarily activates a secondary brush slot. Defaults to Smooth.
+    shift_secondary_active = False
+    shift_primary_saved_ref = None
+    shift_secondary_brush_ref = None
 
 
 class BbrushStart(bpy.types.Operator):
@@ -120,6 +126,8 @@ class BbrushExit(bpy.types.Operator):
             print("exit bbrush")
 
         ShortcutKey.stop_shortcut_key()
+        from .shift_secondary_brush import clear_shift_secondary_override
+        clear_shift_secondary_override(context)
         BrushKeymap.restore_key(context)
         UpdateBrushShelf.restore_brush_shelf()
         ViewProperty.restore_view_property(context, un_reg)
@@ -162,6 +170,8 @@ class_list = [
     BbrushStart,
     BbrushExit,
     FixBbrushError,
+    TogglePolygroupDisplay,
+    MaskToFaceSetZBrush,
     LeftMouse,
     RightMouse,
     UpdateBrushShelf,
