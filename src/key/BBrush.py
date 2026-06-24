@@ -16,6 +16,7 @@ blender_default = bpy.utils.execfile(os.path.normpath(blender_default_file))
 
 params = blender_default.Params()
 sculpt_keymap = blender_default.km_sculpt(params)
+view3d_keymap = blender_default.km_view3d(params)
 
 mask_keys = [
     ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
@@ -100,13 +101,12 @@ def keep_default_sculpt_item(item):
 
 
 keyconfig_version = (4, 4, 32)
+view3d_keymap[2]["items"].extend([
+    ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
+    ("sculpt.bbrush_zbrush_popup", {"type": "NUMPAD_4", "value": "PRESS", "alt": True}, None),
+])
 keyconfig_data = [
-    ("3D View", {"space_type": "VIEW_3D", "region_type": "WINDOW"}, {
-        "items": [
-            ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
-            ("sculpt.bbrush_zbrush_popup", {"type": "NUMPAD_4", "value": "PRESS", "alt": True}, None),
-        ]
-    }),
+    view3d_keymap,
     ("Sculpt", {"space_type": "EMPTY", "region_type": "WINDOW"}, {
         "items": [
             *mask_keys,
