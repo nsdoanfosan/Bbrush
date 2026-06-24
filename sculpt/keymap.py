@@ -42,6 +42,8 @@ def _is_extra_bbrush_keymap_item(kmi):
         return kmi.type == "F" and kmi.shift
     if kmi.idname == "wm.radial_control":
         return kmi.type == "S"
+    if kmi.idname == "sculpt.bbrush_zbrush_popup":
+        return kmi.type == "FOUR" and kmi.alt
     return False
 
 
@@ -85,6 +87,14 @@ def register_extra_bbrush_keymaps(context):
             ("image_id", "tool_settings.sculpt.brush"),
             ("secondary_tex", False),
         ))
+        extra_keymaps.append((km, kmi))
+
+        kmi = km.keymap_items.new(
+            "sculpt.bbrush_zbrush_popup",
+            type="FOUR",
+            value="PRESS",
+            alt=True,
+        )
         extra_keymaps.append((km, kmi))
 
 

@@ -20,6 +20,7 @@ sculpt_keymap = blender_default.km_sculpt(params)
 mask_keys = [
     ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
     ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
+    ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
     ("wm.radial_control",
      {"type": "S", "value": "PRESS"},
      {"properties":
@@ -64,6 +65,7 @@ update_brush_shelf_keys = [
 bbrush_event = (
     ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
     ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
+    ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
     ("wm.radial_control",
      {"type": "S", "value": "PRESS"},
      {"properties":

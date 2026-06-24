@@ -9,6 +9,7 @@ from .right_mouse import RightMouse
 from .shortcut_key import ShortcutKey
 from .update_brush_shelf import UpdateBrushShelf
 from .view_property import ViewProperty
+from .zbrush_popup import classes as zbrush_popup_classes
 from ..debug import DEBUG_MODE_TOGGLE
 from ..utils import get_pref, refresh_ui
 
@@ -175,6 +176,7 @@ class_list = [
     LeftMouse,
     RightMouse,
     UpdateBrushShelf,
+    *zbrush_popup_classes,
 ]
 
 register_class, unregister_class = bpy.utils.register_classes_factory(class_list)
@@ -183,8 +185,13 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 def register():
     brush.register()
     register_class()
+    bpy.types.Scene.bbrush_zbrush_popup = bpy.props.PointerProperty(
+        type=zbrush_popup_classes[0]
+    )
 
 
 def unregister():
+    if hasattr(bpy.types.Scene, "bbrush_zbrush_popup"):
+        del bpy.types.Scene.bbrush_zbrush_popup
     brush.unregister()
     unregister_class()
