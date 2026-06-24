@@ -243,10 +243,22 @@ class BbrushZBrushPopup(bpy.types.Operator):
         return _active_mesh_object(context) is not None
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_popup(self, width=230)
+        bpy.ops.wm.call_menu(name=BbrushZBrushPopupMenu.bl_idname)
+        return {"FINISHED"}
 
     def draw(self, context):
-        layout = self.layout
+        draw_zbrush_popup(self.layout, context)
+
+
+class BbrushZBrushPopupMenu(bpy.types.Menu):
+    bl_idname = "SCULPT_MT_bbrush_zbrush_popup"
+    bl_label = "BBrush ZBrush Tools"
+
+    def draw(self, context):
+        draw_zbrush_popup(self.layout, context)
+
+
+def draw_zbrush_popup(layout, context):
         props = context.scene.bbrush_zbrush_popup
 
         box = layout.box()
@@ -481,6 +493,7 @@ class BbrushZbMaskByFeature(bpy.types.Operator):
 classes = (
     BbrushZBrushPopupProperties,
     BbrushZBrushPopup,
+    BbrushZBrushPopupMenu,
     BbrushZbMeshFilter,
     BbrushZbMirror,
     BbrushZbSmartResym,
