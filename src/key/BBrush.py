@@ -21,6 +21,7 @@ mask_keys = [
     ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
     ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
     ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
+    ("sculpt.bbrush_zbrush_popup", {"type": "NUMPAD_4", "value": "PRESS", "alt": True}, None),
     ("wm.radial_control",
      {"type": "S", "value": "PRESS"},
      {"properties":
@@ -66,6 +67,7 @@ bbrush_event = (
     ("sculpt.bbrush_face_sets_create_zbrush", {"type": "W", "value": "PRESS", "ctrl": True}, None),
     ("sculpt.bbrush_toggle_polygroup_display", {"type": "F", "value": "PRESS", "shift": True}, None),
     ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
+    ("sculpt.bbrush_zbrush_popup", {"type": "NUMPAD_4", "value": "PRESS", "alt": True}, None),
     ("wm.radial_control",
      {"type": "S", "value": "PRESS"},
      {"properties":
@@ -99,6 +101,12 @@ def keep_default_sculpt_item(item):
 
 keyconfig_version = (4, 4, 32)
 keyconfig_data = [
+    ("3D View", {"space_type": "VIEW_3D", "region_type": "WINDOW"}, {
+        "items": [
+            ("sculpt.bbrush_zbrush_popup", {"type": "FOUR", "value": "PRESS", "alt": True}, None),
+            ("sculpt.bbrush_zbrush_popup", {"type": "NUMPAD_4", "value": "PRESS", "alt": True}, None),
+        ]
+    }),
     ("Sculpt", {"space_type": "EMPTY", "region_type": "WINDOW"}, {
         "items": [
             *mask_keys,
