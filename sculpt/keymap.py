@@ -155,16 +155,9 @@ class BrushKeymap:
 
     @classmethod
     def start_key(cls, context):
-        """src/key/BBrush.py"""
-        global last_key_path
-
-        last_key = context.window_manager.keyconfigs.active.name
-        last_key_path = cls.get_key_preset_path(last_key)
+        """Register BBrush overlay shortcuts without replacing the user's active keymap."""
         if DEBUG_KEYMAP:
-            print("start_key")
-            print("last_key_path", last_key_path)
-            print("brush_key_path", brush_key_path)
-        bpy.ops.preferences.keyconfig_import("EXEC_DEFAULT", filepath=brush_key_path, keep_original=True)
+            print("start_key overlay only")
         register_extra_bbrush_keymaps(context)
 
     @staticmethod
@@ -175,17 +168,7 @@ class BrushKeymap:
         if DEBUG_KEYMAP:
             print("restore_key", active_keyconfig, last_key_path)
         unregister_extra_bbrush_keymaps()
-        if active_keyconfig == "BBrush":
-            bpy.ops.wm.keyconfig_preset_remove("EXEC_DEFAULT", name="BBrush", remove_name=True)
-        if last_key_path:
-            try:
-                bpy.ops.preferences.keyconfig_activate("EXEC_DEFAULT", filepath=last_key_path)
-                last_key_path = None
-                if DEBUG_KEYMAP:
-                    print("brush_key_path", brush_key_path)
-                    print("active_keyconfig", context.window_manager.keyconfigs.active.name)
-            except Exception as e:
-                print("Error", e.args)
+        last_key_path = None
 
 
 def try_restore_keymap():
@@ -196,6 +179,3 @@ def try_restore_keymap():
     from ..utils import is_bbruse_mode
     if not is_bbruse_mode():
         unregister_extra_bbrush_keymaps()
-        if context.window_manager.keyconfigs.active.name == "BBrush":
-            bpy.ops.wm.keyconfig_preset_remove("EXEC_DEFAULT", name="BBrush", remove_name=True)
-            print("try_restore_keymap ok")
