@@ -37,6 +37,12 @@ def _assign_keymap_properties(kmi, properties):
 
 
 def _is_extra_bbrush_keymap_item(kmi):
+    if kmi.idname in {
+        "sculpt.bbrush_left_mouse",
+        "sculpt.bbrush_right_mouse",
+        "sculpt.bbursh_update_brush_shelf",
+    }:
+        return True
     if kmi.idname == "sculpt.bbrush_face_sets_create_zbrush":
         return kmi.type == "W" and kmi.ctrl
     if kmi.idname == "sculpt.bbrush_toggle_polygroup_display":
@@ -57,6 +63,42 @@ def register_extra_bbrush_keymaps(context):
     for name in extra_keymap_names:
         space_type = "EMPTY" if name == "Sculpt" else "VIEW_3D"
         km = keyconfig.keymaps.new(name=name, space_type=space_type, region_type="WINDOW")
+
+        if name != "3D View":
+            kmi = km.keymap_items.new(
+                "sculpt.bbrush_left_mouse",
+                type="LEFTMOUSE",
+                value="PRESS",
+                any=True,
+                head=True,
+            )
+            extra_keymaps.append((km, kmi))
+
+            kmi = km.keymap_items.new(
+                "sculpt.bbrush_right_mouse",
+                type="RIGHTMOUSE",
+                value="PRESS",
+                any=True,
+                head=True,
+            )
+            extra_keymaps.append((km, kmi))
+
+            for key_type in (
+                "LEFT_CTRL",
+                "RIGHT_CTRL",
+                "LEFT_ALT",
+                "RIGHT_ALT",
+                "LEFT_SHIFT",
+                "RIGHT_SHIFT",
+            ):
+                kmi = km.keymap_items.new(
+                    "sculpt.bbursh_update_brush_shelf",
+                    type=key_type,
+                    value="ANY",
+                    any=True,
+                    head=True,
+                )
+                extra_keymaps.append((km, kmi))
 
         kmi = km.keymap_items.new(
             "sculpt.bbrush_face_sets_create_zbrush",
