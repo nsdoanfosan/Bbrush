@@ -1,4 +1,4 @@
-# Bbrush 1.7.2 (local Blender 5.1 compatibility build)
+# Bbrush 1.8.0 (local Blender 5.1 compatibility build)
 
 This package is the project-owned source for PARK's installed Bbrush extension.
 The Blender extension directory is connected to this folder with a Windows
@@ -10,7 +10,24 @@ In Sculpt Mode, `Ctrl+W` runs **Face Set from Mask**, matching ZBrush. `Shift+W`
 remains as a compatibility alias. The command creates a new face set from the
 current non-empty sculpt mask and then clears that consumed mask. If no mask
 exists (or the mask is entirely zero), it creates one new face set from the whole
-mesh.
+mesh. A single Undo after masked `Ctrl+W` restores the Face Sets from before the
+command without restoring the temporary selection mask.
+
+## Mask By Feature
+
+While Bbrush mode is active in Sculpt Mode, use the mask icon in the 3D View
+header to open **Mask By Feature**. The action creates one boundary mask from any
+combination of:
+
+- **Border**: open mesh boundaries, using Blender's native boundary mask.
+- **Groups**: boundaries between Face Sets (the Blender equivalent of ZBrush
+  Polygroups), using Blender's native Face Set boundary mask.
+- **Crease**: edges whose `crease_edge` weight meets the selected threshold.
+
+Width uses Blender's native squared boundary falloff over 1–20 connected edge
+steps. Crease processing is non-destructive and does not replace existing Face
+Sets. Dynamic Topology must be disabled and Multires Sculpt Levels must be 0 for
+this operation.
 
 The other ZBrush-style Sculpt Mode shortcuts are:
 
@@ -20,11 +37,28 @@ The other ZBrush-style Sculpt Mode shortcuts are:
   at the retained pivot.
 - `Alt+Left Click`: while the Transform gizmo is active, place its Sculpt pivot
   on the clicked mesh surface.
+- `Ctrl+Shift+Left Click`: isolate the Face Set under the cursor. When geometry
+  is already hidden, use the same gesture again or click the background to show
+  all Face Sets via Blender's native visibility toggle.
 - `S`: interactive brush strength adjustment.
 - `Shift+F`: toggle Face Set/Polygroup colors.
+- `Ctrl+Shift+G`: with the cursor over a Face Set, open Group Loops settings
+  and create a ZBrush-style boundary band. The generated band receives its own
+  new Face Set color.
 
 These overrides are enabled only while Bbrush mode is active. Outside
 Bbrush mode, Blender's original Sculpt shortcuts continue to work.
+
+## Group Loops
+
+Group Loops treats the Face Set under the mouse cursor as the selected ZBrush
+PolyGroup. Width, loop count, profile, and optional polish are set in a small
+confirmation dialog before the topology is changed. Face Set colors are shown
+automatically after a successful operation.
+
+The command requires a base mesh with at least two Face Sets. It intentionally
+blocks Shape Keys, linked mesh data, Dyntopo, and Multires because those states
+cannot safely accept this topology change.
 
 ## Defaults
 

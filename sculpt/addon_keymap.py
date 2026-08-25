@@ -63,6 +63,11 @@ RUNTIME_KEYS = [
         None,
     ),
     (
+        "sculpt.bbrush_group_loops",
+        {"type": "G", "value": "PRESS", "ctrl": True, "shift": True},
+        None,
+    ),
+    (
         "sculpt.bbrush_deactivate_transform_gizmo",
         {"type": "T", "value": "PRESS"},
         None,
@@ -71,6 +76,11 @@ RUNTIME_KEYS = [
         "sculpt.bbrush_set_transform_pivot_surface",
         {"type": "LEFTMOUSE", "value": "PRESS", "alt": True},
         None,
+    ),
+    (
+        "sculpt.face_set_change_visibility",
+        {"type": "LEFTMOUSE", "value": "PRESS", "ctrl": True, "shift": True},
+        {"mode": "TOGGLE"},
     ),
 ]
 

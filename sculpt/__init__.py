@@ -3,9 +3,12 @@ from mathutils import Vector
 
 from . import brush
 from . import addon_keymap
+from . import face_sets
+from . import mask_by_feature
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask
+from .group_loops import BbrushGroupLoops
 from .runtime_shortcuts import (
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
@@ -224,6 +227,7 @@ class_list = [
     BbrushExit,
     FixBbrushError,
     BbrushFaceSetFromMask,
+    BbrushGroupLoops,
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
@@ -239,10 +243,14 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 def register():
     brush.register()
     register_class()
+    mask_by_feature.register()
+    face_sets.register()
     addon_keymap.register()
 
 
 def unregister():
     addon_keymap.unregister()
+    face_sets.unregister()
+    mask_by_feature.unregister()
     brush.unregister()
     unregister_class()
