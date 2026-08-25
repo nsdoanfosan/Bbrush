@@ -106,6 +106,34 @@ def _target_boundary_edges(target_faces):
     return boundary_edges, skipped_non_manifold
 
 
+def _boundary_reference_scale(boundary_edges):
+    """Return a topology-relative inset depth for the selected border."""
+    depths = []
+    fallback_lengths = []
+    for edge in boundary_edges:
+        edge_vector = edge.verts[1].co - edge.verts[0].co
+        edge_length_squared = edge_vector.length_squared
+        if edge_length_squared <= 1.0e-20:
+            continue
+        fallback_lengths.append(edge_length_squared ** 0.5)
+        for face in edge.link_faces:
+            center = face.calc_center_median()
+            parameter = (center - edge.verts[0].co).dot(edge_vector)
+            parameter = max(0.0, min(1.0, parameter / edge_length_squared))
+            closest = edge.verts[0].co + edge_vector * parameter
+            depth = (center - closest).length
+            if depth > 1.0e-10:
+                depths.append(depth)
+
+    values = sorted(depths or (length * 0.5 for length in fallback_lengths))
+    if not values:
+        return 0.0
+    middle = len(values) // 2
+    if len(values) % 2:
+        return values[middle]
+    return (values[middle - 1] + values[middle]) * 0.5
+
+
 def _boundary_neighbors(boundary_edges):
     neighbors = {}
     for edge in boundary_edges:
@@ -258,21 +286,26 @@ class BbrushGroupLoops(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_group_loops"
     bl_label = "Bbrush Group Loops"
     bl_description = "Create ZBrush-style loops around the Face Set under the cursor"
-    bl_options = {"REGISTER", "UNDO"}
+    # Sculpt's automatic UNDO transaction does not capture a Mesh/BMesh
+    # topology replacement reliably. Commit one explicit post-operation
+    # snapshot instead, so Ctrl+Z and Ctrl+Shift+Z each move exactly one step.
+    bl_options = {"REGISTER"}
 
     width: FloatProperty(
-        name="Width",
-        description="Width of the generated loop band in scene units",
-        default=0.02,
-        min=0.000001,
-        soft_max=0.25,
-        precision=4,
-        subtype="DISTANCE",
-        unit="LENGTH",
+        name="Loop Width",
+        description=(
+            "Loop-band width relative to the polygons beside the Face Set border"
+        ),
+        default=0.3,
+        min=0.01,
+        max=0.95,
+        subtype="FACTOR",
     )
     loops: IntProperty(
         name="Loops",
-        description="Number of segments across the generated boundary band",
+        description=(
+            "Number of support loops added on each side of the Face Set border"
+        ),
         default=2,
         min=1,
         max=16,
@@ -326,6 +359,10 @@ class BbrushGroupLoops(bpy.types.Operator):
             self.report({"ERROR"}, blocker)
             return {"CANCELLED"}
 
+        if not bpy.app.background and not bpy.ops.ed.undo_push.poll():
+            self.report({"ERROR"}, "Group Loops needs an editor undo context")
+            return {"CANCELLED"}
+
         face_set_id, error = _face_set_under_cursor(context, event, obj)
         if error:
             self.report({"WARNING"}, error)
@@ -344,7 +381,7 @@ class BbrushGroupLoops(bpy.types.Operator):
         column.prop(self, "profile")
         column.prop(self, "polish")
         column.prop(self, "preserve_form")
-        layout.label(text="Creates a new Face Set for the band.", icon="INFO")
+        layout.label(text="Keeps the existing Face Set border.", icon="INFO")
 
     def execute(self, context):
         obj = getattr(context, "sculpt_object", None) or context.active_object
@@ -363,14 +400,9 @@ class BbrushGroupLoops(bpy.types.Operator):
             self.report({"ERROR"}, blocker)
             return {"CANCELLED"}
 
-        # Sculpt's local undo stack does not automatically capture topology
-        # replacement through Mesh/BMesh data. Record the intact sculpt mesh
-        # explicitly before the single commit so one Ctrl+Z restores it.
-        try:
-            bpy.ops.ed.undo_push(message="Before Bbrush Group Loops")
-        except RuntimeError:
-            # Background registration tests do not have an editor undo context.
-            pass
+        if not bpy.app.background and not bpy.ops.ed.undo_push.poll():
+            self.report({"ERROR"}, "Group Loops needs an editor undo context")
+            return {"CANCELLED"}
 
         bm = bmesh.new(use_operators=True)
         try:
@@ -412,17 +444,21 @@ class BbrushGroupLoops(bpy.types.Operator):
                     self.preserve_form,
                 )
 
-            new_face_set_id = max(
-                (abs(face[face_set_layer]) for face in bm.faces), default=0
-            ) + 1
+            reference_scale = _boundary_reference_scale(boundary_edges)
+            if reference_scale <= 1.0e-10:
+                raise RuntimeError("The Face Set boundary has no usable local scale")
+            bevel_offset = reference_scale * self.width
 
             bevel_result = bmesh.ops.bevel(
                 bm,
                 geom=boundary_edges,
-                offset=self.width,
+                offset=bevel_offset,
                 offset_type="OFFSET",
                 profile_type="SUPERELLIPSE",
-                segments=self.loops,
+                # A Face Set border must remain a real center edge. Two bevel
+                # segments per requested loop keep the strip symmetric, with
+                # the existing group boundary between its two equal halves.
+                segments=self.loops * 2,
                 profile=self.profile,
                 affect="EDGES",
                 clamp_overlap=True,
@@ -457,23 +493,26 @@ class BbrushGroupLoops(bpy.types.Operator):
                     self.polish,
                 )
 
-            for face in new_faces:
-                face[face_set_layer] = new_face_set_id
-
             bm.to_mesh(obj.data)
             obj.data.update()
             context.view_layer.update()
 
-            # Rebuild Sculpt's PBVH after the single mesh commit. This does not
-            # create another undo step and keeps Ctrl+Z tied to this operator.
+            # Rebuild Sculpt's PBVH after the single mesh commit. Undo is
+            # recorded once immediately below, after this rebuild succeeds.
             try:
                 bpy.ops.sculpt.optimize()
             except RuntimeError:
                 pass
 
+            # Push the completed topology once. With no automatic UNDO flag,
+            # the previous stack item is the intact pre-operation mesh and
+            # redo returns to this committed result without an extra no-op.
+            if not bpy.app.background:
+                bpy.ops.ed.undo_push(message="Bbrush Group Loops")
+
             result_message = (
-                f"Created {len(new_faces)} Group Loop faces as Face Set "
-                f"{new_face_set_id} from {len(boundary_edges)} boundary edges"
+                f"Created {len(new_faces)} Group Loop faces around Face Set "
+                f"{self.target_face_set} from {len(boundary_edges)} boundary edges"
             )
             if skipped_non_manifold:
                 result_message += (

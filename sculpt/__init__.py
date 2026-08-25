@@ -8,7 +8,7 @@ from . import mask_by_feature
 from . import zbrush_tools
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
-from .face_sets import BbrushFaceSetFromMask
+from .face_sets import BbrushFaceSetFromMask, BbrushFaceSetFromMaskApply
 from .group_loops import BbrushGroupLoops
 from .runtime_shortcuts import (
     BbrushActivateTransformGizmo,
@@ -228,6 +228,7 @@ class_list = [
     BbrushExit,
     FixBbrushError,
     BbrushFaceSetFromMask,
+    BbrushFaceSetFromMaskApply,
     BbrushGroupLoops,
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
