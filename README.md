@@ -12,6 +12,22 @@ current non-empty sculpt mask and then clears that consumed mask. If no mask
 exists (or the mask is entirely zero), it creates one new face set from the whole
 mesh.
 
+## Mask By Feature
+
+While Bbrush mode is active in Sculpt Mode, use the mask icon in the 3D View
+header to open **Mask By Feature**. The action creates one boundary mask from any
+combination of:
+
+- **Border**: open mesh boundaries, using Blender's native boundary mask.
+- **Groups**: boundaries between Face Sets (the Blender equivalent of ZBrush
+  Polygroups), using Blender's native Face Set boundary mask.
+- **Crease**: edges whose `crease_edge` weight meets the selected threshold.
+
+Width uses Blender's native squared boundary falloff over 1–20 connected edge
+steps. Crease processing is non-destructive and does not replace existing Face
+Sets. Dynamic Topology must be disabled and Multires Sculpt Levels must be 0 for
+this operation.
+
 The other ZBrush-style Sculpt Mode shortcuts are:
 
 - `W`: activate Blender's combined Sculpt Transform gizmo. The gizmo transforms
