@@ -218,7 +218,10 @@ class BbrushBrushPopup(bpy.types.Operator):
 
         active = self.__class__._active_instance
         if active is not None:
-            active._cleanup(context)
+            try:
+                active._cleanup(context)
+            except ReferenceError:
+                self.__class__._active_instance = None
 
         UpdateBrushShelf.update_brush_shelf(context, event)
         self._entries = available_sculpt_brushes()
@@ -339,7 +342,10 @@ class BbrushBrushPopup(bpy.types.Operator):
 def cancel_active_popup():
     active = BbrushBrushPopup._active_instance
     if active is not None:
-        active._cleanup(bpy.context)
+        try:
+            active._cleanup(bpy.context)
+        except ReferenceError:
+            BbrushBrushPopup._active_instance = None
 
 
 classes = (BbrushBrushPopup,)
