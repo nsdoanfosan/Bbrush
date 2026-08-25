@@ -3,6 +3,7 @@ from mathutils import Vector
 
 from . import brush
 from . import addon_keymap
+from . import zbrush_tools
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask
@@ -240,9 +241,11 @@ def register():
     brush.register()
     register_class()
     addon_keymap.register()
+    zbrush_tools.register()
 
 
 def unregister():
+    zbrush_tools.unregister()
     addon_keymap.unregister()
     brush.unregister()
     unregister_class()
