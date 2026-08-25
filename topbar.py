@@ -46,6 +46,12 @@ def top_bar_draw(self, context):
         if bbrush_active:
             row.prop(pref, "always_use_bbrush_sculpt_mode", emboss=True, icon="AUTO", text="")
 
+            row.popover(
+                panel="VIEW3D_PT_bbrush_mask_by_feature",
+                text="" if not pref.top_bar_show_text else "Mask By Feature",
+                icon="MOD_MASK",
+            )
+
             row = layout.row(align=True)
             row.prop(pref, "show_shortcut_keys", emboss=True, icon="EVENT_K", text="")
             FixBbrushError.draw_button(row)
