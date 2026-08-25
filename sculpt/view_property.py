@@ -46,7 +46,7 @@ class ViewProperty:
             print("start_view_property", pref.use_navigation_property, view_property_store)
 
     @staticmethod
-    def restore_view_property(context, save_user_pref=False):
+    def restore_view_property(context):
         global view_property_store
         pref = get_pref()
         if pref is not None and pref.use_navigation_property:
@@ -67,5 +67,3 @@ class ViewProperty:
             print("now pref", store)
 
         view_property_store.clear()
-        if save_user_pref:
-            bpy.ops.wm.save_userpref()

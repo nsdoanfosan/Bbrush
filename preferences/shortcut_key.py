@@ -9,7 +9,7 @@ def update_show_shortcut_keys(self, context):
 class ShortcutKey:
     show_shortcut_keys: bpy.props.BoolProperty(
         name="Display shortcut keys",
-        default=True,
+        default=False,
         update=update_show_shortcut_keys,
     )
     shortcut_key_portability: bpy.props.BoolProperty(name="Shortcut Key Portability", default=True)
