@@ -1,6 +1,7 @@
 # ZBrush Alt+5 Tools: Blender Porting Specification
 
-Status: implementation-ready research and design; operators are not implemented yet.
+Status: implemented on `feature/zbrush-alt5-tools`; pure-kernel and live Blender
+GUI integration tests pass on Blender 5.1.2.
 
 Target baseline:
 
@@ -16,9 +17,9 @@ The supplied ZBrush popup contains 13 actions and their modifiers.
 | Section | ZBrush action | Parameters visible in the palette |
 | --- | --- | --- |
 | Deform | Mirror | X/Y/Z axes |
-| Deform | Polish By Features | amount, algorithm circle, X/Y/Z axes |
-| Deform | Polish By Groups | amount, algorithm circle, X/Y/Z axes |
-| Deform | Relax | amount, algorithm circle, X/Y/Z axes |
+| Deform | Polish By Features | amount, algorithm circle |
+| Deform | Polish By Groups | amount, algorithm circle |
+| Deform | Relax | amount, algorithm circle |
 | Deform | Smart ReSym | X/Y/Z axes |
 | Deform | Inflate | signed amount, X/Y/Z axes |
 | PolyGroup | Auto Groups | none |
@@ -38,18 +39,18 @@ masks.
 
 | Action | Confirmed ZBrush behavior | Blender 5.1 starting point | Port decision |
 | --- | --- | --- | --- |
-| Mirror | Reflects the current tool on the enabled axes; this is a flip, not Mirror-and-Weld or a duplicated half. | Edit/Object Mirror flips geometry but does not apply Sculpt masks. | Custom mask-aware reflection wrapper. Default to ZBrush-compatible world axes; expose Local as an option. |
+| Mirror | Reflects the current tool on the enabled axes; this is a flip, not Mirror-and-Weld or a duplicated half. | Edit/Object Mirror flips geometry but does not apply Sculpt masks. | Custom mask-aware reflection around the object origin on ZBrush-compatible world axes. |
 | Polish By Features | Polishes the whole surface while treating PolyGroup borders and creased edges as features. One circle mode preserves volume; the other is stronger and can shrink the mesh. | Mesh Filter has Smooth, Surface Smooth, Sharpen, masks, visibility, and axis limits. | Feature-aware two-pass filter: interior surface polish plus tangential boundary fairing. Use Face Set borders and crease edges as barriers. |
 | Polish By Groups | Polishes using PolyGroup borders only. Volume-preserving and shrinking modes exist. | Face Sets are the closest PolyGroup representation; Relax Face Sets only fixes boundaries and is not the complete ZBrush operation. | Reuse the same feature-aware kernel but use only Face Set boundaries. |
-| Relax | Evens the mesh while retaining sculptural form/detail. | Mesh Filter `RELAX` evens quad distribution without deforming volume; `SMOOTH` is the shrinking fallback. | Wrap native `RELAX` for the preserving mode and validate the alternate mode against ZBrush before fixing its mapping. |
-| Smart ReSym | Restores corresponding points of an originally mirrored mesh, can handle large distortion, does not require a topology-changing mirror copy, and honors a masked side as the locked source. | `mesh.symmetry_snap` pairs and repositions existing vertices. In local Blender 5.1.2 it exposes direction, threshold, factor, and center, but no Python `use_topology` argument. | MVP uses spatial Snap to Symmetry. Exact mode stores/reuses a persistent partner-index map so large later distortions remain solvable. Masked side is the protected source. |
+| Relax | Evens the mesh while retaining sculptural form/detail. Its open-circle mode maintains form; the closed-circle mode smooths without maintaining volume. | Mesh Filter `RELAX` evens quad distribution without deforming volume; `SMOOTH` is the shrinking counterpart. | Open circle calls native `RELAX`; closed circle calls native `SMOOTH`. Both honor Sculpt masks and visibility. |
+| Smart ReSym | Restores corresponding points of an originally mirrored mesh, can handle large distortion, does not require a topology-changing mirror copy, and honors a masked side as the locked source. | Blender's spatial symmetry snap is insufficient after large distortion. | Build and persist a topology partner-index map, with spatial fallback only for unmatched loose shells. The more strongly masked side is copied as the protected source. |
 | Inflate | Signed outward/inward displacement; mask and axis restrictions apply. | Mesh Filter `INFLATE` moves vertices along normals and respects Sculpt masks, auto-masking, visibility, orientation, and axis restrictions. | Thin wrapper around native Mesh Filter with ZBrush-style signed amount and modal preview. |
-| Auto Groups | One PolyGroup per disconnected mesh shell inside the current SubTool. | Initialize Face Sets `LOOSE_PARTS`. | Native Face Set initialization. |
+| Auto Groups | One PolyGroup per disconnected mesh shell inside the current SubTool. | Face Sets represent the result, but background invocation of Blender's initializer is unstable in the tested build. | Custom vertex-connectivity traversal matching loose mesh shells, including non-manifold and vertex-touching topology. |
 | UV Groups | One group for each unique UV region/tile. | No native Face Set operator groups all faces by UDIM tile ID. | Custom, vectorized face labeling from the active UV map's tile coordinates. Faces crossing a tile boundary are reported. |
 | Auto Groups With UV | Groups by topology and UV continuity. | Initialize by UV Seams only sees seam attributes and may miss imported UV discontinuities. | Detect actual loop-UV discontinuities, not only marked seams, then find face components across UV-continuous edges. Loose parts split naturally. |
 | Merge Stray Groups | Cleans isolated one-polygon groups and groups only one polygon row thick. Intended to clean automatic grouping noise. | No direct equivalent. | Deterministic label cleanup on the face-adjacency graph, with preview and a one-ring default. |
 | Groups By Normals | Creates groups from surface curvature; Max Angle is the break tolerance. | Initialize Face Sets `NORMALS` exists, but its exposed threshold is normalized rather than a degree-valued Max Angle contract. | Compute dihedral breaks in degrees and group faces across edges whose angle is within the requested tolerance. |
-| Group Masked | Creates a PolyGroup from the masked region. `PolishGP` smooths the new group boundary; high values can cross concavities. | Face Sets Create `MASKED` is a direct base operation. Sculpt masks are point-domain floats. | Native group creation when `PolishGP=0`; for nonzero polish, filter a temporary mask copy, create the set, then restore the original mask. |
+| Group Masked | Creates a PolyGroup from the masked region. `PolishGP` smooths the new group boundary; high values can cross concavities. | Sculpt masks are point-domain floats and Face Sets are face-domain integers. | Derive face mask scores, smooth only the temporary scores for `PolishGP`, create a new Face Set, and leave the original mask unchanged. |
 | Group Masked Clear Mask | Same grouping operation, then clears the mask. | Face Sets Create `MASKED` plus Mask Flood Fill value 0. | Extend the existing `BbrushFaceSetFromMask` path and clear only after successful group creation. |
 
 ## 3. Important semantic distinctions
@@ -121,23 +122,23 @@ operator ID.
 
 ## 5. Operator and UI contract
 
-Planned public IDs:
+Implemented public IDs:
 
 ```text
 sculpt.bbrush_zbrush_tools_popup
-sculpt.bbrush_deform_mirror
-sculpt.bbrush_polish_by_features
-sculpt.bbrush_polish_by_groups
-sculpt.bbrush_relax
-sculpt.bbrush_smart_resym
-sculpt.bbrush_inflate
-sculpt.bbrush_auto_groups
-sculpt.bbrush_uv_groups
-sculpt.bbrush_auto_groups_with_uv
-sculpt.bbrush_merge_stray_groups
-sculpt.bbrush_groups_by_normals
-sculpt.bbrush_group_masked
-sculpt.bbrush_group_masked_clear
+sculpt.bbrush_zbrush_mirror
+sculpt.bbrush_zbrush_polish_features
+sculpt.bbrush_zbrush_polish_groups
+sculpt.bbrush_zbrush_relax
+sculpt.bbrush_zbrush_smart_resym
+sculpt.bbrush_zbrush_inflate
+sculpt.bbrush_zbrush_auto_groups
+sculpt.bbrush_zbrush_uv_groups
+sculpt.bbrush_zbrush_auto_groups_uv
+sculpt.bbrush_zbrush_merge_stray_groups
+sculpt.bbrush_zbrush_groups_normals
+sculpt.bbrush_zbrush_group_masked
+sculpt.bbrush_zbrush_group_masked_clear
 ```
 
 UI rules:
@@ -149,8 +150,8 @@ UI rules:
 3. Detect an existing user `Alt+5` binding and report the conflict; never delete
    another keymap item.
 4. Keep a normal menu/top-bar entry as a discoverable fallback.
-5. Deformation rows use a modal horizontal drag preview. Mouse release commits
-   one Undo step; `Esc` restores the exact starting coordinates.
+5. Deformation rows expose an amount slider and explicit `Apply` action; each
+   application is one Blender Undo step.
 6. Use explicit tooltips such as `Preserve Volume`. Do not assume that a filled
    or hollow ZBrush circle means the same algorithm for every row.
 7. All operators must report unsupported states before changing data.
@@ -351,22 +352,20 @@ Performance gates for the Python implementation should be measured at 100k and
 1M faces. Native Blender operators are preferred whenever they satisfy the data
 contract.
 
-## 10. Black-box items requiring ZBrush golden tests
+## 10. Remaining numeric-parity limits
 
-Maxon's public documentation does not fully specify these details, so they must
-not be guessed into permanent behavior:
+Maxon's public documentation specifies the functional behavior but not every
+numeric kernel constant. The implementation therefore guarantees the operation
+contract below, while exact vertex-for-vertex ZBrush parity remains out of scope:
 
 1. Exact numeric scaling of Polish, Relax, and Inflate sliders.
-2. The circle-mode mapping for Relax. Maxon's Deformation page describes circle
-   behavior inconsistently across Polish, Polish By Features/Groups, and Relax.
-3. Soft-mask-to-polygon membership rule used by Group Masked.
-4. Exact spatial/morphological radius represented by PolishGP.
-5. The full cleanup rule and iteration order of Merge Stray Groups.
-6. Whether UV Groups in the user's ZBrush build groups strictly by UDIM tile in
-   every UV layout edge case.
+2. Soft-mask-to-polygon membership rule used by Group Masked.
+3. Exact spatial/morphological radius represented by PolishGP.
+4. The full cleanup rule and iteration order of Merge Stray Groups.
 
-Golden tests must export the same indexed fixture before/after each ZBrush
-operation, then compare vertex coordinates and group IDs in Blender.
+The circle behavior itself is fixed from Maxon's current documentation: closed
+Polish circles preserve volume, open Polish circles may contract; open Relax
+maintains form, while closed Relax smooths without maintaining volume.
 
 ## 11. Local Blender 5.1.2 API evidence
 
@@ -390,16 +389,18 @@ background process. Unit tests should exercise pure data kernels headlessly;
 Sculpt operator integration tests must run in a real GUI context until that
 Blender issue is resolved.
 
-## 12. Implementation order
+## 12. Verification completed
 
-1. Popup, properties, runtime-only `Alt+5`, and registration tests.
-2. Direct native wrappers: Inflate, Relax, Auto Groups, Group Masked, Clear Mask.
-3. UV Groups, Auto Groups With UV, and Groups By Normals pure data kernels.
-4. Merge Stray Groups and PolishGP preview/commit path.
-5. Mirror with masks, axes, Shape Key policy, and modal preview.
-6. Polish By Groups, then Polish By Features.
-7. Smart ReSym partner-map capture, validation, and locked-side behavior.
-8. ZBrush golden-test calibration and final slider mappings.
+- Safe package and standalone registration under `--factory-startup`; no user
+  preferences were saved.
+- Pure-data regression coverage for topology Smart ReSym, masked source locking,
+  feature/crease polish, volume-mode distinction, loose-part grouping, UV tile
+  grouping, UV continuity, one-row stray merging, and normal-angle thresholds.
+- Live Blender GUI coverage for rotated-object global Mirror with masks,
+  large-distortion Smart ReSym, Polish By Groups, Auto Groups, both Group Masked
+  variants, both Relax circle modes, and native Inflate.
+- The live suite uses only temporary `__BBRUSH_ALT5_QA__` data and restores the
+  original active object, selection, mode, and Bbrush runtime state.
 
 ## 13. Primary references
 
