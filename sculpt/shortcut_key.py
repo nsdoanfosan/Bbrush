@@ -22,6 +22,15 @@ SHORTCUT_KEYS = {
         {"tool": "Smooth", "key": "shift+left Paint on the model"},
 
         {"doc": " "},
+        {"doc": "ZBrush-style controls"},
+        {"tool": "Transform gizmo", "key": "W"},
+        {"tool": "Hide transform gizmo", "key": "T"},
+        {"tool": "Place gizmo on surface", "key": "alt+left Click"},
+        {"tool": "Adjust strength", "key": "S"},
+        {"tool": "Face Set from mask / all", "key": "ctrl+W / shift+W"},
+        {"tool": "Toggle Face Set colors", "key": "shift+F"},
+
+        {"doc": " "},
         {"doc": "Other"},
         {"tool": "Switch object", "key": "alt+left Click on other models"},
     ],

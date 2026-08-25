@@ -110,6 +110,8 @@ def sync_auto_mode_handlers():
 def load_post_draw(args):
     """File load hook: sculpt mode may already be active without a mode-change event."""
     refresh_viewport_overlay()
+    if _auto_handlers_active:
+        try_toggle_bbrush_mode()
 
 
 def _deferred_refresh_overlay():

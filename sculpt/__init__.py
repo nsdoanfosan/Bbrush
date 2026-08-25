@@ -5,6 +5,13 @@ from . import brush
 from . import addon_keymap
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
+from .face_sets import BbrushFaceSetFromMask
+from .runtime_shortcuts import (
+    BbrushActivateTransformGizmo,
+    BbrushDeactivateTransformGizmo,
+    BbrushSetTransformPivotSurface,
+    BbrushToggleFaceSets,
+)
 from .shortcut_key import ShortcutKey
 from .update_brush_shelf import UpdateBrushShelf
 from .view_property import ViewProperty
@@ -51,6 +58,9 @@ class BrushRuntime:
 
     show_floor = None  # Saved overlay.show_floor before entering Bbrush
 
+    # Object pointer whose Sculpt Transform pivot has been initialized.
+    transform_pivot_object = None
+
     # SCULPT,SMOOTH,HIDE,MASK,ORIGINAL
     brush_mode = "NONE"
 
@@ -89,6 +99,7 @@ class BbrushStart(bpy.types.Operator):
         from ..depth_map import refresh_draw_handler
 
         brush_runtime = BrushRuntime()
+        addon_keymap.set_runtime_keymaps_active(True)
 
         if DEBUG_MODE_TOGGLE:
             print("start bbrush")
@@ -147,13 +158,14 @@ class BbrushExit(bpy.types.Operator):
                 v3d.overlay.show_floor = brush_runtime.show_floor
 
         brush_runtime = None
+        addon_keymap.set_runtime_keymaps_active(False)
 
         if DEBUG_MODE_TOGGLE:
             print("exit bbrush")
 
         ShortcutKey.stop_shortcut_key()
         UpdateBrushShelf.restore_brush_shelf()
-        ViewProperty.restore_view_property(context, un_reg)
+        ViewProperty.restore_view_property(context)
 
         refresh_ui(context)
         refresh_draw_handler(context)
@@ -211,6 +223,11 @@ class_list = [
     BbrushStart,
     BbrushExit,
     FixBbrushError,
+    BbrushFaceSetFromMask,
+    BbrushActivateTransformGizmo,
+    BbrushDeactivateTransformGizmo,
+    BbrushSetTransformPivotSurface,
+    BbrushToggleFaceSets,
     LeftMouse,
     RightMouse,
     UpdateBrushShelf,

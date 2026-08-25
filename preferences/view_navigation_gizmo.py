@@ -6,7 +6,7 @@ from ..utils import DISPLAY_ITEMS, check_display_mode_is_draw
 class ViewNavigationGizmo:
     view_navigation_gizmo_display_mode: bpy.props.EnumProperty(
         name="Display Mode",
-        default="ONLY_BBRUSH",
+        default="NOT_DISPLAY",
         items=DISPLAY_ITEMS
     )
     view_navigation_gizmo_scale: bpy.props.FloatProperty(name="View navigation scale", default=1)
@@ -18,7 +18,7 @@ class ViewNavigationGizmo:
         max=0,
         min=-4096,
     )
-    view_navigation_gizmo_show_tips: bpy.props.BoolProperty(name="Show tips", default=True)
+    view_navigation_gizmo_show_tips: bpy.props.BoolProperty(name="Show tips", default=False)
 
     def draw_view_navigation_gizmo(self, layout):
         box = layout.column().box()
