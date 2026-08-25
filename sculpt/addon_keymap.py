@@ -77,6 +77,11 @@ RUNTIME_KEYS = [
         {"type": "LEFTMOUSE", "value": "PRESS", "alt": True},
         None,
     ),
+    (
+        "sculpt.face_set_change_visibility",
+        {"type": "LEFTMOUSE", "value": "PRESS", "ctrl": True, "shift": True},
+        {"mode": "TOGGLE"},
+    ),
 ]
 
 TOOL_KEYMAP_NAMES = (

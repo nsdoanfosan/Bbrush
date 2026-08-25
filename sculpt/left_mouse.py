@@ -29,17 +29,12 @@ class LeftMouse(bpy.types.Operator, ManuallyManageEvents):
 
         brush_runtime.left_mouse = Vector((event.mouse_x, event.mouse_y))
 
-        # The generic Bbrush LEFTMOUSE keymap can take priority over more
-        # specific addon keymaps after Blender merges the user key configuration.
-        # Route this gesture here so there is one reliable input path, while
-        # leaving visibility behavior entirely to Blender's native operator.
+        # Blender can place this generic ANY-modifier item before the dedicated
+        # Ctrl+Shift click after merging keymaps. Do not invoke the visibility
+        # operator from inside this wrapper: pass the event onward so Blender's
+        # native operator runs as the single top-level Sculpt undo step.
         if event.ctrl and event.shift and not event.alt:
-            try:
-                return bpy.ops.sculpt.face_set_change_visibility(
-                    "INVOKE_DEFAULT", mode="TOGGLE"
-                )
-            except RuntimeError:
-                return {"PASS_THROUGH"}
+            return {"PASS_THROUGH"}
 
         UpdateBrushShelf.update_brush_shelf(context, event)
         active_tool = ToolSelectPanelHelper.tool_active_from_context(context)
