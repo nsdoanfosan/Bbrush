@@ -49,6 +49,18 @@ The other ZBrush-style Sculpt Mode shortcuts are:
 These overrides are enabled only while Bbrush mode is active. Outside
 Bbrush mode, Blender's original Sculpt shortcuts continue to work.
 
+## Viewport edge overlays
+
+The following shortcuts toggle mesh edge-mark display for the current 3D View
+in any mode. They change only viewport overlay state and never edit mesh data:
+
+- `Alt+5`: Sharp edges
+- `Alt+6`: Seams
+- `Alt+7`: Bevel weights
+
+The Deform and PolyGroup popup previously assigned to `Alt+5` remains available
+as **Bbrush ZBrush Tools** through Blender's Operator Search (`F3`).
+
 ## Group Loops
 
 Group Loops treats the Face Set under the mouse cursor as the selected ZBrush
@@ -73,8 +85,8 @@ Validation must use `default_set=False` and must never save preferences from a
 
 ## Feature development
 
-The implemented and verified contract for the ZBrush-style `Alt+5` Deform and
-PolyGroup popup is in
+The implemented and verified contract for the ZBrush-style Deform and PolyGroup
+popup is in
 [`docs/zbrush_alt5_porting_spec.md`](docs/zbrush_alt5_porting_spec.md). The
 specification records the exact command scope, Blender 5.1 mappings, attribute
 contracts, unsupported-state policy, remaining numeric-parity limits, and the

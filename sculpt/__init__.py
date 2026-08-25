@@ -15,6 +15,7 @@ from .runtime_shortcuts import (
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
+    BbrushToggleEdgeOverlay,
     BbrushToggleFaceSets,
 )
 from .shortcut_key import ShortcutKey
@@ -234,6 +235,7 @@ class_list = [
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
+    BbrushToggleEdgeOverlay,
     BbrushToggleFaceSets,
     LeftMouse,
     RightMouse,

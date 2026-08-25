@@ -41,6 +41,52 @@ def _tag_view3d(context):
         area.tag_redraw()
 
 
+EDGE_OVERLAY_TARGETS = {
+    "SHARP": ("show_edge_sharp", "Sharp edges"),
+    "SEAM": ("show_edge_seams", "Seams"),
+    "BEVEL_WEIGHT": ("show_edge_bevel_weight", "Bevel weights"),
+}
+
+
+class BbrushToggleEdgeOverlay(bpy.types.Operator):
+    """Toggle one mesh edge-mark overlay in the current 3D View."""
+
+    bl_idname = "view3d.bbrush_toggle_edge_overlay"
+    bl_label = "Toggle Edge Overlay"
+    bl_description = "Show or hide a mesh edge-mark overlay in this 3D View"
+    bl_options = {"REGISTER"}
+
+    target: bpy.props.EnumProperty(
+        items=[
+            (identifier, label, f"Toggle viewport display of {label.lower()}")
+            for identifier, (_property, label) in EDGE_OVERLAY_TARGETS.items()
+        ]
+    )
+
+    @classmethod
+    def poll(cls, context):
+        if _view3d_space(context) is None:
+            cls.poll_message_set("Available in a 3D View")
+            return False
+        return True
+
+    def execute(self, context):
+        space = _view3d_space(context)
+        if space is None:
+            self.report({"WARNING"}, "No 3D View found")
+            return {"CANCELLED"}
+
+        property_name, label = EDGE_OVERLAY_TARGETS[self.target]
+        overlay = space.overlay
+        visible = not getattr(overlay, property_name)
+        setattr(overlay, property_name, visible)
+        _tag_view3d(context)
+
+        state = "shown" if visible else "hidden"
+        self.report({"INFO"}, f"{label} {state}")
+        return {"FINISHED"}
+
+
 class BbrushActivateTransformGizmo(bpy.types.Operator):
     """Activate Blender's mask-aware Sculpt Transform gizmo."""
 
