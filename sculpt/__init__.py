@@ -5,6 +5,7 @@ from . import brush
 from . import addon_keymap
 from . import face_sets
 from . import mask_by_feature
+from . import zbrush_alt4
 from . import zbrush_tools
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
@@ -244,6 +245,7 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 def register():
     brush.register()
+    zbrush_alt4.register()
     register_class()
     mask_by_feature.register()
     face_sets.register()
@@ -256,5 +258,6 @@ def unregister():
     addon_keymap.unregister()
     face_sets.unregister()
     mask_by_feature.unregister()
+    zbrush_alt4.unregister()
     brush.unregister()
     unregister_class()
