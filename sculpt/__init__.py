@@ -5,6 +5,7 @@ from . import brush
 from . import addon_keymap
 from . import face_sets
 from . import mask_by_feature
+from . import zbrush_tools
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask
@@ -246,9 +247,11 @@ def register():
     mask_by_feature.register()
     face_sets.register()
     addon_keymap.register()
+    zbrush_tools.register()
 
 
 def unregister():
+    zbrush_tools.unregister()
     addon_keymap.unregister()
     face_sets.unregister()
     mask_by_feature.unregister()

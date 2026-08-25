@@ -31,6 +31,7 @@ SHORTCUT_KEYS = {
         {"tool": "Isolate Face Set / show all", "key": "ctrl+shift+left Click"},
         {"tool": "Toggle Face Set colors", "key": "shift+F"},
         {"tool": "Group Loops under cursor", "key": "ctrl+shift+G"},
+        {"tool": "Deform / PolyGroup tools", "key": "alt+5"},
 
         {"doc": " "},
         {"doc": "Other"},
