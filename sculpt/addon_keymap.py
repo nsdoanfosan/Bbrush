@@ -63,6 +63,11 @@ RUNTIME_KEYS = [
         None,
     ),
     (
+        "sculpt.bbrush_group_loops",
+        {"type": "G", "value": "PRESS", "ctrl": True, "shift": True},
+        None,
+    ),
+    (
         "sculpt.bbrush_deactivate_transform_gizmo",
         {"type": "T", "value": "PRESS"},
         None,

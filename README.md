@@ -1,4 +1,4 @@
-# Bbrush 1.7.2 (local Blender 5.1 compatibility build)
+# Bbrush 1.7.3 (local Blender 5.1 compatibility build)
 
 This package is the project-owned source for PARK's installed Bbrush extension.
 The Blender extension directory is connected to this folder with a Windows
@@ -22,9 +22,23 @@ The other ZBrush-style Sculpt Mode shortcuts are:
   on the clicked mesh surface.
 - `S`: interactive brush strength adjustment.
 - `Shift+F`: toggle Face Set/Polygroup colors.
+- `Ctrl+Shift+G`: with the cursor over a Face Set, open Group Loops settings
+  and create a ZBrush-style boundary band. The generated band receives its own
+  new Face Set color.
 
 These overrides are enabled only while Bbrush mode is active. Outside
 Bbrush mode, Blender's original Sculpt shortcuts continue to work.
+
+## Group Loops
+
+Group Loops treats the Face Set under the mouse cursor as the selected ZBrush
+PolyGroup. Width, loop count, profile, and optional polish are set in a small
+confirmation dialog before the topology is changed. Face Set colors are shown
+automatically after a successful operation.
+
+The command requires a base mesh with at least two Face Sets. It intentionally
+blocks Shape Keys, linked mesh data, Dyntopo, and Multires because those states
+cannot safely accept this topology change.
 
 ## Defaults
 

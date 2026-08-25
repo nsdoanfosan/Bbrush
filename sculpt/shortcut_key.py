@@ -29,6 +29,7 @@ SHORTCUT_KEYS = {
         {"tool": "Adjust strength", "key": "S"},
         {"tool": "Face Set from mask / all", "key": "ctrl+W / shift+W"},
         {"tool": "Toggle Face Set colors", "key": "shift+F"},
+        {"tool": "Group Loops under cursor", "key": "ctrl+shift+G"},
 
         {"doc": " "},
         {"doc": "Other"},
