@@ -3,6 +3,7 @@ from mathutils import Vector
 
 from . import brush
 from . import addon_keymap
+from . import zbrush_alt4
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask
@@ -238,11 +239,13 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 def register():
     brush.register()
+    zbrush_alt4.register()
     register_class()
     addon_keymap.register()
 
 
 def unregister():
     addon_keymap.unregister()
+    zbrush_alt4.unregister()
     brush.unregister()
     unregister_class()
