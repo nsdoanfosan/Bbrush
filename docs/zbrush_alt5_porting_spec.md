@@ -399,6 +399,10 @@ Blender issue is resolved.
 - Live Blender GUI coverage for rotated-object global Mirror with masks,
   large-distortion Smart ReSym, Polish By Groups, Auto Groups, both Group Masked
   variants, both Relax circle modes, and native Inflate.
+- Disposable factory-GUI Undo coverage for every mutating operator. Each test
+  proves that the operation changes its fixture, then verifies that one Undo
+  restores coordinates, polygon order, Face Sets, masks, UVs, and Smart ReSym's
+  partner attributes/custom fingerprint exactly.
 - The live suite uses only temporary `__BBRUSH_ALT5_QA__` data and restores the
   original active object, selection, mode, and Bbrush runtime state.
 
