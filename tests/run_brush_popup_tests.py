@@ -74,6 +74,7 @@ try:
             "brushes": len(entries),
             "groups": len(groups),
             "draw_shortcut": f"{draw.first_key}{draw.second_key}",
+            "native_asset_shelf": module._SCULPT_ASSET_SHELF,
             "runtime_b_only": True,
         },
     )

@@ -16,6 +16,7 @@ import bpy
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_NAME = "bbrush_brush_popup_gui_test"
+SCREENSHOT = ROOT.parents[1] / "work" / "bbrush_native_brush_library.png"
 state = {"stage": "load"}
 
 
@@ -68,9 +69,14 @@ def check_result():
         result = {
             "active_brush": active.name if active else None,
             "popup_closed": popup.BbrushBrushPopup._active_instance is None,
+            "screenshot": str(SCREENSHOT),
             "sequence": "B C L",
         }
-        result["passed"] = result["active_brush"] == "Clay" and result["popup_closed"]
+        result["passed"] = (
+            result["active_brush"] == "Clay"
+            and result["popup_closed"]
+            and SCREENSHOT.is_file()
+        )
         return finish(result)
     except Exception:
         return finish({"passed": False, "stage": "check", "error": traceback.format_exc()})
@@ -92,6 +98,12 @@ def send_first_key():
         popup = state["popup"].BbrushBrushPopup._active_instance
         if popup is None:
             return finish({"passed": False, "stage": "popup_open", "error": "Popup did not open"})
+        window, area, region = view_context()
+        with bpy.context.temp_override(window=window, area=area, region=region):
+            bpy.ops.screen.screenshot(
+                filepath=str(SCREENSHOT),
+                check_existing=False,
+            )
         send_key("C")
         bpy.app.timers.register(send_second_key, first_interval=0.25)
     except Exception:
