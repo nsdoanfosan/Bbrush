@@ -27,6 +27,24 @@ UPDATE_BRUSH_SHELF_KEYS = [
     ("sculpt.bbrush_update_brush_shelf", {"type": "RIGHT_SHIFT", "value": "ANY", "any": True}, None),
 ]
 
+VIEWPORT_KEYS = [
+    (
+        "view3d.bbrush_toggle_edge_overlay",
+        {"type": "FIVE", "value": "PRESS", "alt": True},
+        {"target": "SHARP"},
+    ),
+    (
+        "view3d.bbrush_toggle_edge_overlay",
+        {"type": "SIX", "value": "PRESS", "alt": True},
+        {"target": "SEAM"},
+    ),
+    (
+        "view3d.bbrush_toggle_edge_overlay",
+        {"type": "SEVEN", "value": "PRESS", "alt": True},
+        {"target": "BEVEL_WEIGHT"},
+    ),
+]
+
 RUNTIME_KEYS = [
     (
         "sculpt.bbrush_alt4_popup",
@@ -138,6 +156,14 @@ def _register_sculpt_keymap(kc):
         _add_keymap_item(km, idname, event, properties)
 
 
+def _register_view3d_keymap(kc):
+    km = kc.keymaps.new(
+        name="3D View", space_type="VIEW_3D", region_type="WINDOW"
+    )
+    for idname, event, properties in VIEWPORT_KEYS:
+        _add_keymap_item(km, idname, event, properties, head=True)
+
+
 def _register_tool_keymaps(kc):
     for name in TOOL_KEYMAP_NAMES:
         km = kc.keymaps.new(name=name, space_type="VIEW_3D", region_type="WINDOW")
@@ -151,6 +177,7 @@ def register():
         return
 
     _register_sculpt_keymap(kc)
+    _register_view3d_keymap(kc)
     _register_tool_keymaps(kc)
     # Blender 5.1+ addon keyconfig does not support modal keymaps.
     # Gear-style rotate/move/zoom switching relies on default modal keymaps;
