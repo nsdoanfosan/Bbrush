@@ -17,6 +17,7 @@ import bpy
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_NAME = "bbrush_brush_popup_gui_test"
 SCREENSHOT = ROOT.parents[1] / "work" / "bbrush_native_brush_library.png"
+CLOSED_SCREENSHOT = ROOT.parents[1] / "work" / "bbrush_native_brush_library_closed.png"
 state = {"stage": "load"}
 
 
@@ -70,12 +71,16 @@ def check_result():
             "active_brush": active.name if active else None,
             "popup_closed": popup.BbrushBrushPopup._active_instance is None,
             "screenshot": str(SCREENSHOT),
-            "sequence": "B C L",
+            "closed_screenshot": str(CLOSED_SCREENSHOT),
+            "toggle_closed": state.get("toggle_closed", False),
+            "sequence": "B B, B C L",
         }
         result["passed"] = (
             result["active_brush"] == "Clay"
             and result["popup_closed"]
+            and result["toggle_closed"]
             and SCREENSHOT.is_file()
+            and CLOSED_SCREENSHOT.is_file()
         )
         return finish(result)
     except Exception:
@@ -106,6 +111,47 @@ def send_first_key():
             )
         send_key("C")
         bpy.app.timers.register(send_second_key, first_interval=0.25)
+    except Exception:
+        return finish({"passed": False, "stage": state["stage"], "error": traceback.format_exc()})
+    return None
+
+
+def reopen_for_mnemonic():
+    try:
+        state["stage"] = "reopen"
+        window, area, region = view_context()
+        with bpy.context.temp_override(window=window, area=area, region=region):
+            state["reopen_status"] = sorted(
+                bpy.ops.sculpt.bbrush_brush_popup("INVOKE_DEFAULT")
+            )
+        bpy.app.timers.register(send_first_key, first_interval=0.35)
+    except Exception:
+        return finish({"passed": False, "stage": state["stage"], "error": traceback.format_exc()})
+    return None
+
+
+def close_with_b():
+    try:
+        state["stage"] = "toggle_close"
+        send_key("B")
+        bpy.app.timers.register(check_toggle_closed, first_interval=0.25)
+    except Exception:
+        return finish({"passed": False, "stage": state["stage"], "error": traceback.format_exc()})
+    return None
+
+
+def check_toggle_closed():
+    try:
+        state["stage"] = "check_toggle_close"
+        popup = state["popup"]
+        state["toggle_closed"] = popup.BbrushBrushPopup._active_instance is None
+        window, area, region = view_context()
+        with bpy.context.temp_override(window=window, area=area, region=region):
+            bpy.ops.screen.screenshot(
+                filepath=str(CLOSED_SCREENSHOT),
+                check_existing=False,
+            )
+        bpy.app.timers.register(reopen_for_mnemonic, first_interval=0.35)
     except Exception:
         return finish({"passed": False, "stage": state["stage"], "error": traceback.format_exc()})
     return None
@@ -147,7 +193,7 @@ def setup():
             state["invoke_status"] = sorted(
                 bpy.ops.sculpt.bbrush_brush_popup("INVOKE_DEFAULT")
             )
-        bpy.app.timers.register(send_first_key, first_interval=0.35)
+        bpy.app.timers.register(close_with_b, first_interval=0.35)
     except Exception:
         return finish({"passed": False, "stage": state["stage"], "error": traceback.format_exc()})
     return None

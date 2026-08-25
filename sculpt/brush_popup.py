@@ -219,9 +219,11 @@ class BbrushBrushPopup(bpy.types.Operator):
         active = self.__class__._active_instance
         if active is not None:
             try:
+                active._close_native_library(context)
                 active._cleanup(context)
             except ReferenceError:
                 self.__class__._active_instance = None
+            return {"FINISHED"}
 
         UpdateBrushShelf.update_brush_shelf(context, event)
         self._entries = available_sculpt_brushes()
@@ -255,6 +257,17 @@ class BbrushBrushPopup(bpy.types.Operator):
         if event.value == "PRESS" and event.type in {"ESC", "RIGHTMOUSE"}:
             self._cleanup(context)
             return {"PASS_THROUGH", "FINISHED"}
+
+        # B owns the library while this modal session is active.  Do not feed
+        # it into the mnemonic filter: pressing B again is the close toggle.
+        if (
+            event.value == "PRESS"
+            and event.type == "B"
+            and not (event.ctrl or event.shift or event.alt or event.oskey)
+        ):
+            self._close_native_library(context)
+            self._cleanup(context)
+            return {"FINISHED"}
 
         if self._active_brush_pointer(context) != self._starting_brush:
             self._cleanup(context)
@@ -337,6 +350,23 @@ class BbrushBrushPopup(bpy.types.Operator):
         workspace = getattr(context, "workspace", None)
         if workspace is not None:
             workspace.status_text_set(None)
+
+    def _close_native_library(self, context):
+        """Dismiss the asset popover without changing the selected brush."""
+        sculpt = getattr(context.tool_settings, "sculpt", None)
+        brush = getattr(sculpt, "brush", None) if sculpt else None
+        if brush is None:
+            return
+
+        # Asset activation is the native selection/close path used by the
+        # shelf popover. Re-activating the current asset keeps user state
+        # unchanged while letting Blender dismiss the temporary popup region.
+        entry = next(
+            (item for item in self._entries if item.name == brush.name),
+            None,
+        )
+        if entry is not None:
+            activate_sculpt_brush(context, entry)
 
 
 def cancel_active_popup():
