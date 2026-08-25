@@ -69,6 +69,15 @@ so changes remain visible in Blender's standard UI:
 - Curve and Line stroke methods;
 - Paint Curve delete and snapshot.
 
+Blender deliberately skips ordinary property Undo pushes while an object is in
+Sculpt Mode. Alt+4 therefore records a compact shadow of its working Sculpt,
+Brush, active-object, and Paint Curve state in the Scene undo snapshot. Undo and
+Redo handlers restore the native settings from that shadow. Numeric controls use
+an explicit value dialog so one confirmation creates exactly one reversible
+Alt+4 action instead of an untracked direct RNA slider edit. Snapshot Curve adds
+an explicit before/after data snapshot because nested `paintcurve.draw` calls do
+not create a usable Python-call undo step by themselves.
+
 Controls that have no honest Blender equivalent are intentionally status
 operators. Clicking one reports the missing semantic and the required custom
 implementation instead of changing an unrelated Blender setting.
@@ -80,7 +89,8 @@ sculpt/
   zbrush_alt4/
     __init__.py       registration boundary
     operators.py      native bridge operators and explicit deferred contracts
-    popup.py          Alt+4 palette layout and native property bindings
+    popup.py          Alt+4 palette layout and undo-safe numeric editors
+    undo.py           compact state snapshots and Undo/Redo synchronization
 ```
 
 The package is isolated so the later VDM, projection, clip, stroke, and curve
@@ -104,8 +114,13 @@ code.
 - Registration must succeed in Blender 5.1.2 with `default_set=False`.
 - No factory-startup process may save user preferences.
 - `Alt+4` is inactive before Bbrush starts and active after Bbrush starts.
-- Native buttons must change the corresponding Blender RNA property exactly
-  once per invocation and remain undo-safe where geometry changes.
+- Native buttons and numeric editors must change the corresponding Blender RNA
+  property exactly once per invocation and restore it with one Undo; Redo must
+  restore the changed state.
+- Dyntopo, detail/refine modes and values, auto-masking, LazyMouse values,
+  Curve/Line mode, and Paint Curve delete must pass setting Undo/Redo QA.
+- Snapshot Curve must change a disposable test mesh, restore identical vertex
+  coordinates with one Undo, and reproduce the changed coordinates with Redo.
 - Popup drawing must succeed with a normal asset brush and with no active brush.
 - Deferred buttons must report their status and must not mutate mesh data.
 - Live QA must reload all `sculpt.zbrush_alt4` submodules before re-registering

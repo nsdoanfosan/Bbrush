@@ -1,6 +1,7 @@
 import bpy
 
 from .operators import active_sculpt_brush, poll_bbrush_sculpt
+from .undo import ensure_undo_baseline
 
 
 def _deferred(layout, text, feature, *, depress=False):
@@ -8,6 +9,19 @@ def _deferred(layout, text, feature, *, depress=False):
         "sculpt.bbrush_alt4_deferred", text=text, depress=depress
     )
     op.feature = feature
+    return op
+
+
+def _numeric(layout, text, target, value):
+    if isinstance(value, int):
+        value_text = str(value)
+    else:
+        value_text = f"{value:.3g}"
+    op = layout.operator(
+        "sculpt.bbrush_alt4_set_numeric",
+        text=f"{text}  {value_text}",
+    )
+    op.target = target
     return op
 
 
@@ -56,9 +70,19 @@ def _draw_sculptris(layout, context):
     )
 
     if adaptive:
-        controls.prop(sculpt, "detail_percent", text="SubDivide Size")
+        _numeric(
+            controls,
+            "SubDivide Size",
+            "DETAIL_PERCENT",
+            sculpt.detail_percent,
+        )
     else:
-        controls.prop(sculpt, "detail_size", text="SubDivide Size")
+        _numeric(
+            controls,
+            "SubDivide Size",
+            "DETAIL_SIZE",
+            sculpt.detail_size,
+        )
     _deferred(
         controls,
         "UnDivide Ratio  (separate threshold pending)",
@@ -118,16 +142,30 @@ def _draw_stroke(layout, context):
         return
 
     row = box.row(align=True)
-    row.prop(brush, "use_smooth_stroke", text="LazyMouse", toggle=True)
+    row.operator(
+        "sculpt.bbrush_alt4_toggle_lazy_mouse",
+        text="LazyMouse",
+        depress=brush.use_smooth_stroke,
+    )
     relative = row.row(align=True)
     relative.enabled = False
     relative.label(text="Relative (native)")
 
-    box.prop(brush, "spacing", text="LazyStep / Spacing")
+    _numeric(box, "LazyStep / Spacing", "SPACING", brush.spacing)
     lazy = box.column(align=True)
     lazy.enabled = brush.use_smooth_stroke
-    lazy.prop(brush, "smooth_stroke_factor", text="LazySmooth")
-    lazy.prop(brush, "smooth_stroke_radius", text="LazyRadius")
+    _numeric(
+        lazy,
+        "LazySmooth",
+        "SMOOTH_FACTOR",
+        brush.smooth_stroke_factor,
+    )
+    _numeric(
+        lazy,
+        "LazyRadius",
+        "SMOOTH_RADIUS",
+        brush.smooth_stroke_radius,
+    )
     _deferred(box, "LazySnap  0", "LAZY_SNAP")
 
     row = box.row(align=True)
@@ -146,7 +184,7 @@ def _draw_stroke(layout, context):
 
     curve_controls = box.column(align=True)
     curve_controls.enabled = brush.stroke_method in {"CURVE", "LINE"}
-    curve_controls.prop(brush, "spacing", text="CurveStep / Spacing")
+    _numeric(curve_controls, "CurveStep / Spacing", "SPACING", brush.spacing)
     _deferred(curve_controls, "Curve Smoothness", "CURVE_SMOOTHNESS")
 
     row = box.row(align=True)
@@ -181,6 +219,7 @@ class BbrushAlt4Popup(bpy.types.Operator):
         return poll_bbrush_sculpt(cls, context)
 
     def invoke(self, context, event):
+        ensure_undo_baseline(context)
         return context.window_manager.invoke_popup(self, width=300)
 
     def execute(self, context):

@@ -1,6 +1,7 @@
 import bpy
 
 from ...utils import is_bbrush_mode
+from .undo import run_undoable_change, run_undoable_data_change
 
 
 DEFERRED_FEATURES = {
@@ -104,6 +105,25 @@ def active_sculpt_brush(context):
     return getattr(sculpt, "brush", None) if sculpt is not None else None
 
 
+NUMERIC_TARGETS = {
+    "DETAIL_PERCENT": ("sculpt", "detail_percent", "SubDivide Size"),
+    "DETAIL_SIZE": ("sculpt", "detail_size", "SubDivide Size"),
+    "SPACING": ("brush", "spacing", "Spacing"),
+    "SMOOTH_FACTOR": ("brush", "smooth_stroke_factor", "LazySmooth"),
+    "SMOOTH_RADIUS": ("brush", "smooth_stroke_radius", "LazyRadius"),
+}
+
+
+def numeric_target(context, target):
+    owner_kind, property_name, label = NUMERIC_TARGETS[target]
+    owner = (
+        context.tool_settings.sculpt
+        if owner_kind == "sculpt"
+        else active_sculpt_brush(context)
+    )
+    return owner, property_name, label
+
+
 class BbrushAlt4Deferred(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_deferred"
     bl_label = "Alt+4 Port Status"
@@ -138,29 +158,41 @@ class BbrushAlt4ToggleDyntopo(bpy.types.Operator):
         return poll_bbrush_sculpt(cls, context)
 
     def execute(self, context):
-        try:
+        def change():
             result = bpy.ops.sculpt.dynamic_topology_toggle("EXEC_DEFAULT")
+            if "FINISHED" not in result:
+                raise RuntimeError("Blender did not toggle Dynamic Topology")
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
         except RuntimeError as exc:
             self.report({"ERROR"}, f"Could not toggle Dynamic Topology: {exc}")
             return {"CANCELLED"}
-        return result if "FINISHED" in result else {"CANCELLED"}
+        return {"FINISHED"}
 
 
 class BbrushAlt4ToggleDetailMode(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_toggle_detail_mode"
     bl_label = "Toggle Adaptive Size"
     bl_description = "Switch Dyntopo detail between brush-relative and view-relative sizing"
-    bl_options = {"REGISTER"}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
         return poll_bbrush_sculpt(cls, context)
 
     def execute(self, context):
-        sculpt = context.tool_settings.sculpt
-        sculpt.detail_type_method = (
-            "RELATIVE" if sculpt.detail_type_method == "BRUSH" else "BRUSH"
-        )
+        def change():
+            sculpt = context.tool_settings.sculpt
+            sculpt.detail_type_method = (
+                "RELATIVE" if sculpt.detail_type_method == "BRUSH" else "BRUSH"
+            )
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
         return {"FINISHED"}
 
 
@@ -168,26 +200,33 @@ class BbrushAlt4ToggleCombined(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_toggle_combined"
     bl_label = "Toggle Combined"
     bl_description = "Combine Dyntopo subdivision and edge collapse, or subdivide only"
-    bl_options = {"REGISTER"}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
         return poll_bbrush_sculpt(cls, context)
 
     def execute(self, context):
-        sculpt = context.tool_settings.sculpt
-        sculpt.detail_refine_method = (
-            "SUBDIVIDE"
-            if sculpt.detail_refine_method == "SUBDIVIDE_COLLAPSE"
-            else "SUBDIVIDE_COLLAPSE"
-        )
+        def change():
+            sculpt = context.tool_settings.sculpt
+            sculpt.detail_refine_method = (
+                "SUBDIVIDE"
+                if sculpt.detail_refine_method == "SUBDIVIDE_COLLAPSE"
+                else "SUBDIVIDE_COLLAPSE"
+            )
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
         return {"FINISHED"}
 
 
 class BbrushAlt4ToggleAutomask(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_toggle_automask"
     bl_label = "Toggle Auto Mask"
-    bl_options = {"REGISTER"}
+    bl_options = {"REGISTER", "UNDO"}
 
     target: bpy.props.EnumProperty(
         items=[
@@ -202,24 +241,58 @@ class BbrushAlt4ToggleAutomask(bpy.types.Operator):
         return poll_bbrush_sculpt(cls, context)
 
     def execute(self, context):
-        sculpt = context.tool_settings.sculpt
-        if self.target == "FACE_SETS":
-            sculpt.use_automasking_face_sets = not sculpt.use_automasking_face_sets
-        elif self.target == "TOPOLOGY":
-            sculpt.use_automasking_topology = not sculpt.use_automasking_topology
-        else:
+        def change():
+            sculpt = context.tool_settings.sculpt
+            if self.target == "FACE_SETS":
+                sculpt.use_automasking_face_sets = not sculpt.use_automasking_face_sets
+            elif self.target == "TOPOLOGY":
+                sculpt.use_automasking_topology = not sculpt.use_automasking_topology
+            else:
+                brush = active_sculpt_brush(context)
+                if brush is None:
+                    raise RuntimeError("No editable sculpt brush is active")
+                brush.use_frontface = not brush.use_frontface
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        return {"FINISHED"}
+
+
+class BbrushAlt4ToggleLazyMouse(bpy.types.Operator):
+    bl_idname = "sculpt.bbrush_alt4_toggle_lazy_mouse"
+    bl_label = "Toggle LazyMouse"
+    bl_description = "Toggle Blender Smooth Stroke with Alt+4 Undo/Redo support"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        if not poll_bbrush_sculpt(cls, context):
+            return False
+        if active_sculpt_brush(context) is None:
+            cls.poll_message_set("No editable sculpt brush is active")
+            return False
+        return True
+
+    def execute(self, context):
+        def change():
             brush = active_sculpt_brush(context)
-            if brush is None:
-                self.report({"WARNING"}, "No editable sculpt brush is active")
-                return {"CANCELLED"}
-            brush.use_frontface = not brush.use_frontface
+            brush.use_smooth_stroke = not brush.use_smooth_stroke
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
         return {"FINISHED"}
 
 
 class BbrushAlt4ToggleStrokeMode(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_toggle_stroke_mode"
     bl_label = "Toggle Stroke Mode"
-    bl_options = {"REGISTER"}
+    bl_options = {"REGISTER", "UNDO"}
 
     mode: bpy.props.EnumProperty(
         items=[
@@ -238,8 +311,68 @@ class BbrushAlt4ToggleStrokeMode(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        brush = active_sculpt_brush(context)
-        brush.stroke_method = "SPACE" if brush.stroke_method == self.mode else self.mode
+        def change():
+            brush = active_sculpt_brush(context)
+            brush.stroke_method = (
+                "SPACE" if brush.stroke_method == self.mode else self.mode
+            )
+
+        try:
+            run_undoable_change(context, self.bl_label, change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        return {"FINISHED"}
+
+
+class BbrushAlt4SetNumeric(bpy.types.Operator):
+    bl_idname = "sculpt.bbrush_alt4_set_numeric"
+    bl_label = "Set Alt+4 Value"
+    bl_description = "Edit this value as one reversible Alt+4 Undo/Redo step"
+    bl_options = {"REGISTER", "UNDO"}
+
+    target: bpy.props.EnumProperty(
+        items=[
+            (identifier, label, label)
+            for identifier, (_owner, _property, label) in NUMERIC_TARGETS.items()
+        ]
+    )
+    value: bpy.props.FloatProperty(name="Value", min=0.0, max=1000.0)
+
+    @classmethod
+    def poll(cls, context):
+        return poll_bbrush_sculpt(cls, context)
+
+    def invoke(self, context, event):
+        owner, property_name, _label = numeric_target(context, self.target)
+        if owner is None:
+            self.report({"WARNING"}, "No editable sculpt brush is active")
+            return {"CANCELLED"}
+        self.value = float(getattr(owner, property_name))
+        return context.window_manager.invoke_props_dialog(self, width=260)
+
+    def draw(self, context):
+        _owner, _property_name, label = numeric_target(context, self.target)
+        self.layout.prop(self, "value", text=label, slider=True)
+
+    def execute(self, context):
+        owner, property_name, label = numeric_target(context, self.target)
+        if owner is None:
+            self.report({"WARNING"}, "No editable sculpt brush is active")
+            return {"CANCELLED"}
+        prop = owner.bl_rna.properties[property_name]
+        value = max(prop.hard_min, min(prop.hard_max, self.value))
+        if prop.type == "INT":
+            value = round(value)
+
+        def change():
+            setattr(owner, property_name, value)
+
+        try:
+            run_undoable_change(context, f"Set {label}", change)
+        except RuntimeError as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
         return {"FINISHED"}
 
 
@@ -247,7 +380,9 @@ class BbrushAlt4PaintCurveSnapshot(bpy.types.Operator):
     bl_idname = "sculpt.bbrush_alt4_paint_curve_snapshot"
     bl_label = "Snapshot Curve"
     bl_description = "Apply the current Blender Paint Curve and keep it available for reuse"
-    bl_options = {"REGISTER", "UNDO"}
+    # paintcurve.draw owns the Sculpt undo node. Adding UNDO here creates a
+    # second wrapper step, so one Ctrl+Z would only remove that empty step.
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
@@ -260,12 +395,20 @@ class BbrushAlt4PaintCurveSnapshot(bpy.types.Operator):
         return True
 
     def execute(self, context):
-        try:
+        result = None
+
+        def change():
+            nonlocal result
             result = bpy.ops.paintcurve.draw("EXEC_DEFAULT")
+            if "FINISHED" not in result:
+                raise RuntimeError("Blender did not apply the Paint Curve")
+
+        try:
+            run_undoable_data_change(context, self.bl_label, change)
         except RuntimeError as exc:
             self.report({"ERROR"}, f"Could not apply Paint Curve: {exc}")
             return {"CANCELLED"}
-        return result if "FINISHED" in result else {"CANCELLED"}
+        return {"FINISHED"}
 
 
 class BbrushAlt4PaintCurveDelete(bpy.types.Operator):
@@ -286,8 +429,24 @@ class BbrushAlt4PaintCurveDelete(bpy.types.Operator):
 
     def execute(self, context):
         brush = active_sculpt_brush(context)
+        previous_curve = brush.paint_curve
+        previous_fake_user = (
+            previous_curve.use_fake_user if previous_curve is not None else None
+        )
+        result = None
+
+        def change():
+            nonlocal result
+            if previous_curve is not None:
+                previous_curve.use_fake_user = True
+            try:
+                result = bpy.ops.paintcurve.new("EXEC_DEFAULT")
+            finally:
+                if previous_curve is not None:
+                    previous_curve.use_fake_user = previous_fake_user
+
         try:
-            result = bpy.ops.paintcurve.new("EXEC_DEFAULT")
+            run_undoable_change(context, self.bl_label, change)
         except RuntimeError as exc:
             self.report({"ERROR"}, f"Could not clear Paint Curve: {exc}")
             return {"CANCELLED"}
@@ -303,7 +462,9 @@ CLASSES = (
     BbrushAlt4ToggleDetailMode,
     BbrushAlt4ToggleCombined,
     BbrushAlt4ToggleAutomask,
+    BbrushAlt4ToggleLazyMouse,
     BbrushAlt4ToggleStrokeMode,
+    BbrushAlt4SetNumeric,
     BbrushAlt4PaintCurveSnapshot,
     BbrushAlt4PaintCurveDelete,
 )
