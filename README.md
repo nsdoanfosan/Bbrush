@@ -1,4 +1,4 @@
-# Bbrush 1.7.3 (local Blender 5.1 compatibility build)
+# Bbrush 1.8.0 (local Blender 5.1 compatibility build)
 
 This package is the project-owned source for PARK's installed Bbrush extension.
 The Blender extension directory is connected to this folder with a Windows
@@ -10,7 +10,8 @@ In Sculpt Mode, `Ctrl+W` runs **Face Set from Mask**, matching ZBrush. `Shift+W`
 remains as a compatibility alias. The command creates a new face set from the
 current non-empty sculpt mask and then clears that consumed mask. If no mask
 exists (or the mask is entirely zero), it creates one new face set from the whole
-mesh.
+mesh. A single Undo after masked `Ctrl+W` restores the Face Sets from before the
+command without restoring the temporary selection mask.
 
 ## Mask By Feature
 
@@ -36,6 +37,9 @@ The other ZBrush-style Sculpt Mode shortcuts are:
   at the retained pivot.
 - `Alt+Left Click`: while the Transform gizmo is active, place its Sculpt pivot
   on the clicked mesh surface.
+- `Ctrl+Shift+Left Click`: isolate the Face Set under the cursor. When geometry
+  is already hidden, use the same gesture again or click the background to show
+  all Face Sets via Blender's native visibility toggle.
 - `S`: interactive brush strength adjustment.
 - `Shift+F`: toggle Face Set/Polygroup colors.
 - `Ctrl+Shift+G`: with the cursor over a Face Set, open Group Loops settings

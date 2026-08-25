@@ -1,12 +1,21 @@
 from array import array
+import hashlib
 
 import bpy
+from bpy.app.handlers import persistent
 
 from ..utils import is_bbrush_mode
 
 
 MASK_ATTRIBUTE = ".sculpt_mask"
+FACE_SET_ATTRIBUTE = ".sculpt_face_set"
 MASK_EPSILON = 1.0e-6
+
+
+# A masked Ctrl+W consumes the mask. Blender's native undo can restore that
+# transient selection mask before restoring the Face Set, so keep the compact
+# pre-operation Face Set state until the next undo completes.
+_pending_face_set_undo = None
 
 
 def _mask_max_value(mesh):
@@ -25,6 +34,123 @@ def _face_set_mode(mesh):
     """Choose the native creation mode for the current sculpt-mask state."""
     max_mask = _mask_max_value(mesh)
     return "MASKED" if max_mask is not None and max_mask > MASK_EPSILON else "ALL"
+
+
+def _attribute_values(attribute, typecode):
+    values = array(typecode, [0]) * len(attribute.data)
+    if values:
+        attribute.data.foreach_get("value", values)
+    return values
+
+
+def _face_set_snapshot(mesh):
+    """Capture Face Set IDs compactly; None means the attribute did not exist."""
+    attribute = mesh.attributes.get(FACE_SET_ATTRIBUTE)
+    if attribute is None:
+        return None
+    if attribute.domain != "FACE" or attribute.data_type != "INT":
+        return None
+    return _attribute_values(attribute, "i")
+
+
+def _mask_fingerprint(mesh):
+    """Identify the exact selection mask that a masked Ctrl+W consumed."""
+    attribute = mesh.attributes.get(MASK_ATTRIBUTE)
+    if attribute is None or attribute.domain != "POINT" or attribute.data_type != "FLOAT":
+        return None
+    values = _attribute_values(attribute, "f")
+    digest = hashlib.blake2b(values.tobytes(), digest_size=16).digest()
+    return len(values), digest
+
+
+def _restore_face_set_snapshot(mesh, values):
+    attribute = mesh.attributes.get(FACE_SET_ATTRIBUTE)
+
+    if values is None:
+        if attribute is not None:
+            mesh.attributes.remove(attribute)
+        return True
+
+    if len(values) != len(mesh.polygons):
+        return False
+
+    if attribute is not None and (
+        attribute.domain != "FACE" or attribute.data_type != "INT"
+    ):
+        mesh.attributes.remove(attribute)
+        attribute = None
+    if attribute is None:
+        attribute = mesh.attributes.new(
+            name=FACE_SET_ATTRIBUTE,
+            type="INT",
+            domain="FACE",
+        )
+    if len(attribute.data) != len(values):
+        return False
+
+    if values:
+        attribute.data.foreach_set("value", values)
+    return True
+
+
+def _remember_face_set_undo(mesh, face_sets, mask_fingerprint):
+    global _pending_face_set_undo
+    _pending_face_set_undo = {
+        "mesh_name": mesh.name,
+        "face_sets": face_sets,
+        "mask_fingerprint": mask_fingerprint,
+    }
+
+
+def _forget_face_set_undo():
+    global _pending_face_set_undo
+    _pending_face_set_undo = None
+
+
+def _clear_mask_in_current_undo_step(mesh):
+    """Remove the consumed mask without creating a second native undo entry."""
+    attribute = mesh.attributes.get(MASK_ATTRIBUTE)
+    if attribute is None:
+        return
+    mesh.attributes.remove(attribute)
+    mesh.update()
+
+
+@persistent
+def _bbrush_face_set_undo_post(*_args):
+    """Make one undo restore pre-Ctrl+W Face Sets without reviving the mask."""
+    global _pending_face_set_undo
+
+    pending = _pending_face_set_undo
+    _pending_face_set_undo = None
+    if pending is None:
+        return
+
+    mesh = bpy.data.meshes.get(pending["mesh_name"])
+    if mesh is None:
+        return
+
+    # Only correct the undo that restored the exact mask consumed by Ctrl+W.
+    # This prevents a later, unrelated undo from changing Face Sets.
+    if _mask_fingerprint(mesh) != pending["mask_fingerprint"]:
+        return
+
+    if not _restore_face_set_snapshot(mesh, pending["face_sets"]):
+        return
+
+    _clear_mask_in_current_undo_step(mesh)
+    mesh.update()
+
+
+def register():
+    if _bbrush_face_set_undo_post not in bpy.app.handlers.undo_post:
+        bpy.app.handlers.undo_post.append(_bbrush_face_set_undo_post)
+
+
+def unregister():
+    _forget_face_set_undo()
+    if _bbrush_face_set_undo_post in bpy.app.handlers.undo_post:
+        bpy.app.handlers.undo_post.remove(_bbrush_face_set_undo_post)
 
 
 class BbrushFaceSetFromMask(bpy.types.Operator):
@@ -50,7 +176,10 @@ class BbrushFaceSetFromMask(bpy.types.Operator):
 
     def execute(self, context):
         obj = getattr(context, "sculpt_object", None) or context.active_object
+        _forget_face_set_undo()
         mode = _face_set_mode(obj.data)
+        previous_face_sets = _face_set_snapshot(obj.data) if mode == "MASKED" else None
+        consumed_mask = _mask_fingerprint(obj.data) if mode == "MASKED" else None
 
         try:
             result = bpy.ops.sculpt.face_sets_create("EXEC_DEFAULT", mode=mode)
@@ -63,17 +192,8 @@ class BbrushFaceSetFromMask(bpy.types.Operator):
             return {"CANCELLED"}
 
         if mode == "MASKED":
-            try:
-                clear_result = bpy.ops.paint.mask_flood_fill(
-                    "EXEC_DEFAULT", mode="VALUE", value=0.0
-                )
-            except RuntimeError as exc:
-                self.report({"ERROR"}, f"Face set created, but mask clear failed: {exc}")
-                return {"CANCELLED"}
-
-            if "FINISHED" not in clear_result:
-                self.report({"WARNING"}, "Face set created, but mask clear was cancelled")
-                return {"CANCELLED"}
+            _clear_mask_in_current_undo_step(obj.data)
+            _remember_face_set_undo(obj.data, previous_face_sets, consumed_mask)
 
         source = "sculpt mask" if mode == "MASKED" else "whole mesh"
         suffix = " and cleared mask" if mode == "MASKED" else ""
