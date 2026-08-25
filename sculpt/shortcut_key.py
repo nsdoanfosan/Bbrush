@@ -30,6 +30,7 @@ SHORTCUT_KEYS = {
         {"tool": "Face Set from mask / all", "key": "ctrl+W / shift+W"},
         {"tool": "Isolate Face Set / show all", "key": "ctrl+shift+left Click"},
         {"tool": "Toggle Face Set colors", "key": "shift+F"},
+        {"tool": "Choose brush", "key": "B, then mnemonic keys"},
         {"tool": "Brush / stroke controls", "key": "alt+4"},
         {"tool": "Group Loops under cursor", "key": "ctrl+shift+G"},
         {"tool": "Deform / PolyGroup tools", "key": "alt+5"},

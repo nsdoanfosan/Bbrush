@@ -29,6 +29,11 @@ UPDATE_BRUSH_SHELF_KEYS = [
 
 RUNTIME_KEYS = [
     (
+        "sculpt.bbrush_brush_popup",
+        {"type": "B", "value": "PRESS"},
+        None,
+    ),
+    (
         "sculpt.bbrush_alt4_popup",
         {"type": "FOUR", "value": "PRESS", "alt": True},
         None,
