@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import bmesh
 import bpy
-from bpy.props import FloatProperty, IntProperty, StringProperty
+from bpy.props import BoolProperty, FloatProperty, IntProperty, StringProperty
 from bpy_extras import view3d_utils
+from mathutils.bvhtree import BVHTree
 
 from ..utils import is_bbrush_mode
 
@@ -105,6 +106,141 @@ def _target_boundary_edges(target_faces):
     return boundary_edges, skipped_non_manifold
 
 
+def _boundary_neighbors(boundary_edges):
+    neighbors = {}
+    for edge in boundary_edges:
+        vert_a, vert_b = edge.verts
+        neighbors.setdefault(vert_a, set()).add(vert_b)
+        neighbors.setdefault(vert_b, set()).add(vert_a)
+    return neighbors
+
+
+def _surface_projected_curve_pass(bm, neighbors, surface_tree, factor):
+    """Move boundary vertices tangentially, then return them to the source surface."""
+    targets = {}
+    bm.normal_update()
+
+    for vert, linked in neighbors.items():
+        # End points and multi-way junctions are feature anchors. ZBrush also
+        # keeps these transitions firmer than ordinary two-edge contour points.
+        if not vert.is_valid or len(linked) != 2:
+            continue
+
+        average = sum((item.co for item in linked), vert.co.copy() * 0.0) / 2.0
+        delta = average - vert.co
+        normal = vert.normal.normalized()
+        tangent_delta = delta - normal * delta.dot(normal)
+        candidate = vert.co + tangent_delta * factor
+        nearest = surface_tree.find_nearest(candidate)
+        targets[vert] = nearest[0] if nearest is not None else candidate
+
+    for vert, coordinate in targets.items():
+        vert.co = coordinate
+
+
+def _closed_boundary_components(neighbors):
+    components = []
+    unseen = set(neighbors)
+
+    while unseen:
+        seed = unseen.pop()
+        component = {seed}
+        pending = [seed]
+        while pending:
+            vert = pending.pop()
+            for linked in neighbors[vert]:
+                if linked not in unseen:
+                    continue
+                unseen.remove(linked)
+                component.add(linked)
+                pending.append(linked)
+
+        if len(component) >= 3 and all(
+            len(neighbors[vert]) == 2 for vert in component
+        ):
+            center = sum(
+                (vert.co for vert in component),
+                seed.co.copy() * 0.0,
+            ) / len(component)
+            radius_squared = sum(
+                (vert.co - center).length_squared for vert in component
+            ) / len(component)
+            components.append((component, center, radius_squared ** 0.5))
+
+    return components
+
+
+def _restore_component_scale(components, surface_tree):
+    """Counter Laplacian shrink while retaining each contour's overall form."""
+    for component, original_center, original_radius in components:
+        current_center = sum(
+            (vert.co for vert in component),
+            original_center.copy() * 0.0,
+        ) / len(component)
+        current_radius_squared = sum(
+            (vert.co - current_center).length_squared for vert in component
+        ) / len(component)
+        current_radius = current_radius_squared ** 0.5
+        if current_radius <= 1.0e-12:
+            continue
+
+        scale = original_radius / current_radius
+        targets = {}
+        for vert in component:
+            candidate = original_center + (vert.co - current_center) * scale
+            nearest = surface_tree.find_nearest(candidate)
+            targets[vert] = nearest[0] if nearest is not None else candidate
+        for vert, coordinate in targets.items():
+            vert.co = coordinate
+
+
+def _polish_boundary(
+    bm, boundary_edges, surface_tree, strength, preserve_form=True
+):
+    """Shape-preserving contour relaxation with source-surface projection."""
+    if strength <= 0.0:
+        return
+
+    neighbors = _boundary_neighbors(boundary_edges)
+    closed_components = (
+        _closed_boundary_components(neighbors) if preserve_form else []
+    )
+    iterations = max(1, round(1.0 + strength * 7.0))
+    factor = 0.14 + strength * 0.24
+
+    for _iteration in range(iterations):
+        _surface_projected_curve_pass(
+            bm, neighbors, surface_tree, factor
+        )
+        _restore_component_scale(closed_components, surface_tree)
+
+
+def _polish_band(bm, new_verts, surface_tree, strength):
+    """Relax the generated strip while retaining the original sculpted form."""
+    if strength <= 0.0 or not new_verts:
+        return
+
+    iterations = max(1, round(1.0 + strength * 3.0))
+    factor = 0.08 + strength * 0.16
+    for _iteration in range(iterations):
+        bmesh.ops.smooth_laplacian_vert(
+            bm,
+            verts=new_verts,
+            lambda_factor=factor,
+            lambda_border=factor,
+            use_x=True,
+            use_y=True,
+            use_z=True,
+            preserve_volume=True,
+        )
+        for vert in new_verts:
+            if not vert.is_valid:
+                continue
+            nearest = surface_tree.find_nearest(vert.co)
+            if nearest is not None:
+                vert.co = nearest[0]
+
+
 def _show_face_sets(context):
     area = getattr(context, "area", None)
     if area is None or area.type != "VIEW_3D":
@@ -151,11 +287,22 @@ class BbrushGroupLoops(bpy.types.Operator):
     )
     polish: FloatProperty(
         name="Polish",
-        description="Relax newly generated vertices after creating the band",
-        default=0.0,
+        description=(
+            "Volume-preserving Face Set border polish before loop creation, "
+            "followed by surface-projected band relaxation"
+        ),
+        default=0.4,
         min=0.0,
         max=1.0,
         subtype="FACTOR",
+    )
+    preserve_form: BoolProperty(
+        name="Preserve Form",
+        description=(
+            "Counter contour shrink while polishing, similar to ZBrush's "
+            "volume-preserving Polish by Groups mode"
+        ),
+        default=True,
     )
     target_face_set: IntProperty(
         name="Face Set",
@@ -196,6 +343,7 @@ class BbrushGroupLoops(bpy.types.Operator):
         column.prop(self, "loops")
         column.prop(self, "profile")
         column.prop(self, "polish")
+        column.prop(self, "preserve_form")
         layout.label(text="Creates a new Face Set for the band.", icon="INFO")
 
     def execute(self, context):
@@ -215,13 +363,21 @@ class BbrushGroupLoops(bpy.types.Operator):
             self.report({"ERROR"}, blocker)
             return {"CANCELLED"}
 
-        error_message = None
-        result_message = None
-        start_mode = obj.mode
-
+        # Sculpt's local undo stack does not automatically capture topology
+        # replacement through Mesh/BMesh data. Record the intact sculpt mesh
+        # explicitly before the single commit so one Ctrl+Z restores it.
         try:
-            bpy.ops.object.mode_set(mode="EDIT")
-            bm = bmesh.from_edit_mesh(obj.data)
+            bpy.ops.ed.undo_push(message="Before Bbrush Group Loops")
+        except RuntimeError:
+            # Background registration tests do not have an editor undo context.
+            pass
+
+        bm = bmesh.new(use_operators=True)
+        try:
+            # Work on an independent BMesh and commit once at the end. Keeping
+            # Sculpt Mode active avoids the split undo history caused by
+            # Sculpt -> Edit -> Sculpt mode changes inside one operator.
+            bm.from_mesh(obj.data)
             bm.faces.ensure_lookup_table()
             bm.edges.ensure_lookup_table()
             bm.verts.ensure_lookup_table()
@@ -243,6 +399,18 @@ class BbrushGroupLoops(bpy.types.Operator):
             boundary_edges, skipped_non_manifold = _target_boundary_edges(target_faces)
             if not boundary_edges:
                 raise RuntimeError("The selected Face Set has no editable boundary")
+
+            source_surface = (
+                BVHTree.FromBMesh(bm) if self.polish > 0.0 else None
+            )
+            if source_surface is not None:
+                _polish_boundary(
+                    bm,
+                    boundary_edges,
+                    source_surface,
+                    self.polish,
+                    self.preserve_form,
+                )
 
             new_face_set_id = max(
                 (abs(face[face_set_layer]) for face in bm.faces), default=0
@@ -281,20 +449,28 @@ class BbrushGroupLoops(bpy.types.Operator):
                     "The boundary could not produce a loop band; try a smaller Width"
                 )
 
-            if self.polish > 0.0 and new_verts:
-                bmesh.ops.smooth_vert(
+            if source_surface is not None:
+                _polish_band(
                     bm,
-                    verts=new_verts,
-                    factor=self.polish * 0.5,
-                    use_axis_x=True,
-                    use_axis_y=True,
-                    use_axis_z=True,
+                    new_verts,
+                    source_surface,
+                    self.polish,
                 )
 
             for face in new_faces:
                 face[face_set_layer] = new_face_set_id
 
-            bmesh.update_edit_mesh(obj.data, loop_triangles=True, destructive=True)
+            bm.to_mesh(obj.data)
+            obj.data.update()
+            context.view_layer.update()
+
+            # Rebuild Sculpt's PBVH after the single mesh commit. This does not
+            # create another undo step and keeps Ctrl+Z tied to this operator.
+            try:
+                bpy.ops.sculpt.optimize()
+            except RuntimeError:
+                pass
+
             result_message = (
                 f"Created {len(new_faces)} Group Loop faces as Face Set "
                 f"{new_face_set_id} from {len(boundary_edges)} boundary edges"
@@ -304,18 +480,10 @@ class BbrushGroupLoops(bpy.types.Operator):
                     f"; skipped {skipped_non_manifold} non-manifold edges"
                 )
         except Exception as exc:
-            error_message = str(exc)
-        finally:
-            if start_mode == "SCULPT" and obj.mode == "EDIT":
-                try:
-                    bpy.ops.object.mode_set(mode="SCULPT")
-                except RuntimeError as exc:
-                    if error_message is None:
-                        error_message = f"Could not return to Sculpt Mode: {exc}"
-
-        if error_message is not None:
-            self.report({"ERROR"}, f"Could not create Group Loops: {error_message}")
+            self.report({"ERROR"}, f"Could not create Group Loops: {exc}")
             return {"CANCELLED"}
+        finally:
+            bm.free()
 
         _show_face_sets(context)
         self.report({"INFO"}, result_message)
