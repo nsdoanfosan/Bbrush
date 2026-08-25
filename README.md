@@ -36,3 +36,12 @@ default and can still be enabled in the add-on preferences.
 
 Validation must use `default_set=False` and must never save preferences from a
 `--factory-startup` Blender process.
+
+## Feature development
+
+The researched implementation contract for the ZBrush-style `Alt+5` Deform and
+PolyGroup popup is in
+[`docs/zbrush_alt5_porting_spec.md`](docs/zbrush_alt5_porting_spec.md). The
+specification records the exact command scope, Blender 5.1 mappings, attribute
+contracts, proposed package layout, unsupported-state policy, and golden-test
+matrix before implementation begins.
