@@ -1,4 +1,4 @@
-# Bbrush 1.8.0 (local Blender 5.1 compatibility build)
+# Bbrush 1.8.0 (local Blender 5.1/5.2 compatibility build)
 
 This package is the project-owned source for PARK's installed Bbrush extension.
 The Blender extension directory is connected to this folder with a Windows
@@ -41,13 +41,31 @@ The other ZBrush-style Sculpt Mode shortcuts are:
   is already hidden, use the same gesture again or click the background to show
   all Face Sets via Blender's native visibility toggle.
 - `S`: interactive brush strength adjustment.
-- `Shift+F`: toggle Face Set/Polygroup colors.
+- `Shift+F`: enter/leave a readable Face Set/Polygroup color view. The first
+  press shows colors even when Blender's native checkbox was already enabled.
+  Solid studio shading, a lightly tinted single-color base, overlays and full
+  Face Set opacity are enabled while X-ray is disabled. This also distinguishes
+  Blender's white default group from the normal sculpt surface. Press again to
+  restore the previous shading; Sculpt exit, file load and add-on unload restore
+  it too. Face Set IDs and mesh geometry are never changed by this display toggle.
 - `Ctrl+Shift+G`: with the cursor over a Face Set, open Group Loops settings
   and create a ZBrush-style boundary band. The generated band receives its own
   new Face Set color.
 
 These overrides are enabled only while Bbrush mode is active. Outside
 Bbrush mode, Blender's original Sculpt shortcuts continue to work.
+
+## Viewport edge overlays
+
+The following shortcuts toggle mesh edge-mark display for the current 3D View
+in any mode. They change only viewport overlay state and never edit mesh data:
+
+- `Alt+5`: Sharp edges
+- `Alt+6`: Seams
+- `Alt+7`: Bevel weights
+
+The Deform and PolyGroup popup previously assigned to `Alt+5` remains available
+as **Bbrush ZBrush Tools** through Blender's Operator Search (`F3`).
 
 ## Group Loops
 
@@ -66,6 +84,24 @@ Bbrush starts automatically when Sculpt Mode is entered. The shortcut help
 overlay, monkey navigation image/tips, and silhouette display are hidden by
 default and can still be enabled in the add-on preferences.
 
+The automatic mode watcher also covers Blender startup and loading another
+file. The RNA mode subscription is renewed after every file load. Shift+F
+restores the master overlay switch and a visible Face Set opacity when showing
+colors.
+
+## Upstream and installation recovery (2026-10-07)
+
+Official upstream was fetched and checked at `7c2527c` (1.5.1, 2026-07-01).
+That revision is already an ancestor of this build, including its brush/context,
+GPU-cache, overlay, and registration fixes. The Blender 5.2 installed directory
+had reverted to a separate 1.5.1 copy lacking the custom operators and shortcuts.
+Use a junction to this integrated source instead of installing the official
+package over the customization. Update upstream by fetching and reviewing the
+diff/merge in this repository, then test and reload Bbrush; do not overwrite the
+installed extension directory. Master edge overlays and the B brush popup are
+both retained. Alt+5/6/7 keep the latest personal edge-overlay assignments;
+Deform/PolyGroup tools remain accessible through F3 without a shortcut conflict.
+
 ## Registration QA
 
 Validation must use `default_set=False` and must never save preferences from a
@@ -73,8 +109,8 @@ Validation must use `default_set=False` and must never save preferences from a
 
 ## Feature development
 
-The implemented and verified contract for the ZBrush-style `Alt+5` Deform and
-PolyGroup popup is in
+The implemented and verified contract for the ZBrush-style Deform and PolyGroup
+popup is in
 [`docs/zbrush_alt5_porting_spec.md`](docs/zbrush_alt5_porting_spec.md). The
 specification records the exact command scope, Blender 5.1 mappings, attribute
 contracts, unsupported-state policy, remaining numeric-parity limits, and the

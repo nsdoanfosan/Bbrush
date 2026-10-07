@@ -8,6 +8,7 @@ from . import face_sets
 from . import mask_by_feature
 from . import zbrush_alt4
 from . import zbrush_tools
+from . import runtime_shortcuts
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask, BbrushFaceSetFromMaskApply
@@ -16,6 +17,7 @@ from .runtime_shortcuts import (
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
+    BbrushToggleEdgeOverlay,
     BbrushToggleFaceSets,
 )
 from .shortcut_key import ShortcutKey
@@ -159,6 +161,7 @@ class BbrushExit(bpy.types.Operator):
         from ..depth_map import refresh_draw_handler
 
         brush_popup.cancel_active_popup()
+        runtime_shortcuts.reset_face_set_views()
 
         if brush_runtime is not None:
             v3d = _first_space_view3d(context)
@@ -237,6 +240,7 @@ class_list = [
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
+    BbrushToggleEdgeOverlay,
     BbrushToggleFaceSets,
     LeftMouse,
     RightMouse,
@@ -247,6 +251,7 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 
 def register():
+    runtime_shortcuts.register_face_set_views()
     brush.register()
     brush_popup.register()
     zbrush_alt4.register()
@@ -258,6 +263,7 @@ def register():
 
 
 def unregister():
+    runtime_shortcuts.unregister_face_set_views()
     zbrush_tools.unregister()
     addon_keymap.unregister()
     face_sets.unregister()

@@ -32,8 +32,10 @@ SHORTCUT_KEYS = {
         {"tool": "Toggle Face Set colors", "key": "shift+F"},
         {"tool": "Choose brush", "key": "B, then mnemonic keys"},
         {"tool": "Brush / stroke controls", "key": "alt+4"},
+        {"tool": "Toggle Sharp edges", "key": "alt+5"},
+        {"tool": "Toggle Seams", "key": "alt+6"},
+        {"tool": "Toggle Bevel weights", "key": "alt+7"},
         {"tool": "Group Loops under cursor", "key": "ctrl+shift+G"},
-        {"tool": "Deform / PolyGroup tools", "key": "alt+5"},
 
         {"doc": " "},
         {"doc": "Other"},

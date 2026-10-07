@@ -26,7 +26,6 @@ from bpy.props import (
 
 FACE_SET_ATTRIBUTE = ".sculpt_face_set"
 MASK_ATTRIBUTE = ".sculpt_mask"
-_addon_keymaps = []
 
 
 def _bbrush_is_running():
@@ -627,7 +626,7 @@ class BBRUSH_PG_zbrush_tools(bpy.types.PropertyGroup):
 class BBRUSH_OT_zbrush_tools_popup(_SculptOperator, bpy.types.Operator):
     bl_idname = "sculpt.bbrush_zbrush_tools_popup"
     bl_label = "Bbrush ZBrush Tools"
-    bl_description = "Open ZBrush Alt+5 inspired Deform and PolyGroup tools"
+    bl_description = "Open ZBrush-inspired Deform and PolyGroup tools"
 
     def invoke(self, context, _event):
         return context.window_manager.invoke_popup(self, width=390)
@@ -1158,25 +1157,8 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.WindowManager.bbrush_zbrush_tools = PointerProperty(type=BBRUSH_PG_zbrush_tools)
 
-    keyconfig = bpy.context.window_manager.keyconfigs.addon
-    if keyconfig is not None:
-        keymap = keyconfig.keymaps.new(name="Sculpt", space_type="EMPTY")
-        item = keymap.keymap_items.new(
-            BBRUSH_OT_zbrush_tools_popup.bl_idname,
-            type="FIVE",
-            value="PRESS",
-            alt=True,
-        )
-        _addon_keymaps.append((keymap, item))
-
 
 def unregister():
-    for keymap, item in reversed(_addon_keymaps):
-        try:
-            keymap.keymap_items.remove(item)
-        except (ReferenceError, RuntimeError):
-            pass
-    _addon_keymaps.clear()
     if hasattr(bpy.types.WindowManager, "bbrush_zbrush_tools"):
         del bpy.types.WindowManager.bbrush_zbrush_tools
     for cls in reversed(classes):

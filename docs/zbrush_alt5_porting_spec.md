@@ -7,7 +7,8 @@ Target baseline:
 
 - Bbrush 1.7.2 local Blender 5.1 compatibility build
 - Blender 5.1.2 on Windows
-- Popup shortcut: `Alt+5`, active only while Bbrush Sculpt mode is active
+- Popup operator: `sculpt.bbrush_zbrush_tools_popup`, available through Operator Search
+- `Alt+5` is reassigned to the Sharp edge viewport-overlay toggle
 - Canonical group data: Blender Sculpt Face Sets
 
 ## 1. Scope captured from the ZBrush palette
@@ -97,13 +98,12 @@ sculpt/
   zbrush_tools/
     __init__.py          # register/unregister only
     properties.py        # popup state and explicit volume/axis settings
-    popup.py             # Alt+5 instanced popup panel
+    popup.py             # Deform and PolyGroup instanced popup panel
     deform.py            # Mirror, Polish, Relax, Smart ReSym, Inflate
     polygroups.py        # all Face Set creation and cleanup operators
     attributes.py        # validated access to mask, face set, hide, crease, UV
     adjacency.py         # shared face/edge graph utilities
     symmetry.py          # partner-map creation, validation, and application
-    keymap.py            # Bbrush-runtime-only Alt+5 binding
 tests/
   zbrush_alt5/
     README.md
@@ -143,12 +143,11 @@ sculpt.bbrush_zbrush_group_masked_clear
 
 UI rules:
 
-1. `Alt+5` opens a compact instanced popup only in a mesh Sculpt context while
-   Bbrush mode is active.
-2. Register the shortcut in the add-on keyconfig and activate it through the
-   existing Bbrush runtime toggle. Do not edit or save the user's keymap.
-3. Detect an existing user `Alt+5` binding and report the conflict; never delete
-   another keymap item.
+1. The popup operator opens a compact instanced popup only in a mesh Sculpt
+   context while Bbrush mode is active.
+2. Keep the operator available through Blender Operator Search. It has no
+   default number-key binding because `Alt+5` toggles Sharp edge display.
+3. Do not edit or save the user's keymap.
 4. Keep a normal menu/top-bar entry as a discoverable fallback.
 5. Deformation rows expose an amount slider and explicit `Apply` action; each
    application is one Blender Undo step.
