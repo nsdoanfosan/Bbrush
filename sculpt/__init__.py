@@ -3,10 +3,12 @@ from mathutils import Vector
 
 from . import brush
 from . import addon_keymap
+from . import brush_popup
 from . import face_sets
 from . import mask_by_feature
 from . import zbrush_alt4
 from . import zbrush_tools
+from . import runtime_shortcuts
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
 from .face_sets import BbrushFaceSetFromMask, BbrushFaceSetFromMaskApply
@@ -158,6 +160,9 @@ class BbrushExit(bpy.types.Operator):
         global brush_runtime
         from ..depth_map import refresh_draw_handler
 
+        brush_popup.cancel_active_popup()
+        runtime_shortcuts.reset_face_set_views()
+
         if brush_runtime is not None:
             v3d = _first_space_view3d(context)
             if v3d is not None and brush_runtime.show_floor is not None:
@@ -246,7 +251,9 @@ register_class, unregister_class = bpy.utils.register_classes_factory(class_list
 
 
 def register():
+    runtime_shortcuts.register_face_set_views()
     brush.register()
+    brush_popup.register()
     zbrush_alt4.register()
     register_class()
     mask_by_feature.register()
@@ -256,10 +263,12 @@ def register():
 
 
 def unregister():
+    runtime_shortcuts.unregister_face_set_views()
     zbrush_tools.unregister()
     addon_keymap.unregister()
     face_sets.unregister()
     mask_by_feature.unregister()
     zbrush_alt4.unregister()
+    brush_popup.unregister()
     brush.unregister()
     unregister_class()

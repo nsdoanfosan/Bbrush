@@ -30,7 +30,19 @@ def try_toggle_bbrush_mode(is_start=False):
     if mode == "SCULPT":
         pref = get_pref()
         if pref is not None and pref.always_use_bbrush_sculpt_mode and not bbrush_active:
-            bpy.ops.sculpt.bbrush_start("INVOKE_DEFAULT")
+            # Timers and file-load handlers have no area/region context.
+            # Resolve the real sculpt viewport before starting the tool shelf.
+            for window in bpy.context.window_manager.windows:
+                for area in window.screen.areas:
+                    if area.type != "VIEW_3D":
+                        continue
+                    region = next((r for r in area.regions if r.type == "WINDOW"), None)
+                    if region is None:
+                        continue
+                    with bpy.context.temp_override(window=window, area=area, region=region):
+                        if bpy.ops.sculpt.bbrush_start.poll():
+                            bpy.ops.sculpt.bbrush_start("INVOKE_DEFAULT")
+                            return
     elif bbrush_active:
         bpy.ops.sculpt.bbrush_exit("INVOKE_DEFAULT", exit_always=False)
     else:
@@ -50,16 +62,26 @@ def start_update_bbrush_mode():
     refresh_viewport_overlay()
 
 
+def _watch_sculpt_mode():
+    """Cover startup/context transitions that don't emit an RNA notification."""
+    if not _auto_handlers_active:
+        return None
+    try_toggle_bbrush_mode()
+    return 0.5
+
+
 def on_object_mode_change():
     refresh_viewport_overlay()
     if _auto_handlers_active:
         try_toggle_bbrush_mode()
 
 
-def ensure_mode_subscribe():
+def ensure_mode_subscribe(force=False):
     global _mode_subscribed
-    if _mode_subscribed:
+    if _mode_subscribed and not force:
         return
+    if force:
+        bpy.msgbus.clear_by_owner(owner)
     bpy.msgbus.subscribe_rna(
         key=(bpy.types.Object, 'mode'),
         owner=owner,
@@ -87,6 +109,8 @@ def enable_auto_mode_handlers():
     _auto_handlers_active = True
     if not bpy.app.timers.is_registered(start_update_bbrush_mode):
         bpy.app.timers.register(start_update_bbrush_mode, first_interval=1, persistent=True)
+    if not bpy.app.timers.is_registered(_watch_sculpt_mode):
+        bpy.app.timers.register(_watch_sculpt_mode, first_interval=0.5, persistent=True)
 
 
 def disable_auto_mode_handlers():
@@ -96,6 +120,8 @@ def disable_auto_mode_handlers():
     _auto_handlers_active = False
     if bpy.app.timers.is_registered(start_update_bbrush_mode):
         bpy.app.timers.unregister(start_update_bbrush_mode)
+    if bpy.app.timers.is_registered(_watch_sculpt_mode):
+        bpy.app.timers.unregister(_watch_sculpt_mode)
 
 
 def sync_auto_mode_handlers():
@@ -110,8 +136,10 @@ def sync_auto_mode_handlers():
 def load_post_draw(args):
     """File load hook: sculpt mode may already be active without a mode-change event."""
     refresh_viewport_overlay()
-    if _auto_handlers_active:
-        try_toggle_bbrush_mode()
+    # Blender clears msgbus subscriptions on file load, including PERSISTENT.
+    # The flag belongs to the Python module and otherwise incorrectly stays True.
+    ensure_mode_subscribe(force=True)
+    sync_auto_mode_handlers()
 
 
 def _deferred_refresh_overlay():
