@@ -228,7 +228,8 @@ class DragDraw(MoveEvent):
         draw_smooth_line(self.mouse_route, Vector((1, 1, 1, self.alpha)), line_width=1)
 
     def start_draw(self, context, event):
-        self.mouse = self.mouse_start = Vector((event.mouse_region_x, event.mouse_region_y))
+        start = self.start_coordinate if self.start_coordinate[0] >= 0 else (event.mouse_region_x, event.mouse_region_y)
+        self.mouse = self.mouse_start = Vector(start)
         self.mouse_route = [self.mouse, ]
         self.mouse_route_convex_shell = []
         self.is_reverse = event.alt
@@ -471,6 +472,7 @@ class BrushShape(bpy.types.Operator, ShapeUpdate):
     bl_label = "Bbrush Shape Gesture"
     bl_description = "Draw mask or hide shape gestures for supported sculpt tools"
     bl_options = {"REGISTER"}
+    start_coordinate: bpy.props.IntVectorProperty(size=2, default=(-1, -1), options={'HIDDEN', 'SKIP_SAVE'})
 
     click_time = None
 

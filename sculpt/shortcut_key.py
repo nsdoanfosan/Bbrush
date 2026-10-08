@@ -28,7 +28,7 @@ SHORTCUT_KEYS = {
         {"tool": "Place gizmo on surface", "key": "alt+left Click"},
         {"tool": "Adjust strength", "key": "S"},
         {"tool": "Face Set from mask / all", "key": "ctrl+W / shift+W"},
-        {"tool": "Isolate Face Set / show all", "key": "ctrl+shift+left Click"},
+        {"tool": "Isolate / invert sole group / hide group", "key": "ctrl+shift+left Click"},
         {"tool": "Toggle Face Set colors", "key": "shift+F"},
         {"tool": "Choose brush", "key": "B, then mnemonic keys"},
         {"tool": "Brush / stroke controls", "key": "alt+4"},
@@ -68,7 +68,7 @@ SHORTCUT_KEYS = {
         {"tool": "Hide inside", "key": "+alt Paint on the model"},
         {"tool": "Unhide", "key": "Click in blank area"},
         {"tool": "Invert visibility", "key": "Drag in blank area"},
-        {"tool": "Invert visibility", "key": "Click in model"},
+        {"tool": "Invert sole group / hide one of several", "key": "Click in model"},
     ],
 }
 

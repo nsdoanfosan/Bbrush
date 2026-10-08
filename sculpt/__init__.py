@@ -11,8 +11,9 @@ from . import zbrush_tools
 from . import runtime_shortcuts
 from .left_mouse import LeftMouse
 from .right_mouse import RightMouse
-from .face_sets import BbrushFaceSetFromMask, BbrushFaceSetFromMaskApply
+from .face_sets import BbrushFaceSetFromMask, BbrushFaceSetFromMaskApply, BbrushHistoryStep
 from .group_loops import BbrushGroupLoops
+from .polygroup_visibility import BbrushPolygroupVisibility
 from .runtime_shortcuts import (
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
@@ -236,7 +237,9 @@ class_list = [
     FixBbrushError,
     BbrushFaceSetFromMask,
     BbrushFaceSetFromMaskApply,
+    BbrushHistoryStep,
     BbrushGroupLoops,
+    BbrushPolygroupVisibility,
     BbrushActivateTransformGizmo,
     BbrushDeactivateTransformGizmo,
     BbrushSetTransformPivotSurface,
