@@ -8,9 +8,9 @@ is_5_0_up_version = bpy.app.version >= (5, 0, 0)
 def sculpt_invert_hide_face():
     """Invert visible faces; version-specific sculpt operator wrapper."""
     if is_5_0_up_version:
-        bpy.ops.paint.visibility_invert()
+        bpy.ops.paint.visibility_invert('EXEC_DEFAULT', True)
     elif is_4_1_up_version:
-        bpy.ops.paint.visibility_invert()
+        bpy.ops.paint.visibility_invert('EXEC_DEFAULT', True)
     elif is_3_6_up_version:
         bpy.ops.sculpt.face_set_invert_visibility()
     else:

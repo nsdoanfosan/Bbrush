@@ -32,12 +32,10 @@ class LeftMouse(bpy.types.Operator, ManuallyManageEvents):
         # The generic Bbrush LEFTMOUSE keymap can take priority over more
         # specific addon keymaps after Blender merges the user key configuration.
         # Route this gesture here so there is one reliable input path, while
-        # leaving visibility behavior entirely to Blender's native operator.
+        # using ZBrush's state-dependent click/drag rules.
         if event.ctrl and event.shift and not event.alt:
             try:
-                return bpy.ops.sculpt.face_set_change_visibility(
-                    "INVOKE_DEFAULT", mode="TOGGLE"
-                )
+                return bpy.ops.sculpt.bbrush_polygroup_visibility("INVOKE_DEFAULT")
             except RuntimeError:
                 return {"PASS_THROUGH"}
 

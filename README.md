@@ -9,9 +9,18 @@ directory junction so changes remain reviewable and Git-ready.
 In Sculpt Mode, `Ctrl+W` runs **Face Set from Mask**, matching ZBrush. `Shift+W`
 remains as a compatibility alias. The command creates a new face set from the
 current non-empty sculpt mask and then clears that consumed mask. If no mask
-exists (or the mask is entirely zero), it creates one new face set from the whole
-mesh. A single Undo after masked `Ctrl+W` restores the Face Sets from before the
-command without restoring the temporary selection mask.
+exists (or the mask is entirely zero), it creates one new face set from the
+visible faces, preserving hidden groups. One Undo restores the exact previous
+Face Sets and mask; Redo restores the group creation and consumed mask together.
+Both layers use one Blender mesh transaction, without modifying data in Undo
+handlers. Dyntopo is disabled before grouping, with a separate recovery boundary.
+Multires Sculpt Levels must be 0: high-resolution grid masks are not base-vertex
+masks and are rejected rather than grouping the wrong surface.
+
+While Bbrush is active, `Ctrl+Z` and `Ctrl+Shift+Z` use Blender's native Undo/Redo
+and cross an unchanged internal Sculpt-to-memfile checkpoint automatically.
+Mesh data is never rewritten by an Undo handler. Blender's Undo History menu may
+still list the **Before Bbrush Face Set** checkpoint as a separate entry.
 
 ## Mask By Feature
 
@@ -37,9 +46,11 @@ The other ZBrush-style Sculpt Mode shortcuts are:
   at the retained pivot.
 - `Alt+Left Click`: while the Transform gizmo is active, place its Sculpt pivot
   on the clicked mesh surface.
-- `Ctrl+Shift+Left Click`: isolate the Face Set under the cursor. When geometry
-  is already hidden, use the same gesture again or click the background to show
-  all Face Sets via Blender's native visibility toggle.
+- `Ctrl+Shift+Left Click`: with the whole mesh visible, isolate the clicked
+  Face Set. Click the sole visible group again to invert visibility. When several
+  groups remain visible and some geometry is hidden, hide only the clicked group.
+  Click the background to show all groups; drag on the background to invert.
+  Each visibility operation supports native Undo/Redo.
 - `S`: interactive brush strength adjustment.
 - `Shift+F`: enter/leave a readable Face Set/Polygroup color view. The first
   press shows colors even when Blender's native checkbox was already enabled.

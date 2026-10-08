@@ -47,6 +47,16 @@ VIEWPORT_KEYS = [
 
 RUNTIME_KEYS = [
     (
+        "sculpt.bbrush_history_step",
+        {"type": "Z", "value": "PRESS", "ctrl": True},
+        {"redo": False},
+    ),
+    (
+        "sculpt.bbrush_history_step",
+        {"type": "Z", "value": "PRESS", "ctrl": True, "shift": True},
+        {"redo": True},
+    ),
+    (
         "sculpt.bbrush_brush_popup",
         {"type": "B", "value": "PRESS"},
         None,
